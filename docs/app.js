@@ -1,7 +1,7 @@
 import { createTextBuffer } from './text-buffer.js';
 import { createPasteHistory } from './paste-history.js';
 import { restoreUpdateText, setupUpdates } from './sw-register.js';
-import { createShareLink, readShareLink } from './share-link.js';
+import { createShareLink, readShareLink, generateSharePassword } from './share-link.js';
 
 const input = document.querySelector('#text-input');
 const pasteButton = document.querySelector('#paste-button');
@@ -13,6 +13,16 @@ const shareDialog = document.querySelector('#share-dialog');
 const shareLink = document.querySelector('#share-link');
 const shareStatus = document.querySelector('#share-status');
 const copyShareButton = document.querySelector('#copy-share-button');
+const shareProtect = document.querySelector('#share-protect');
+const sharePassword = document.querySelector('#share-password');
+const passwordControls = document.querySelector('#share-password-controls');
+const copyPasswordButton = document.querySelector('#copy-password-button');
+const generatePasswordButton = document.querySelector('#generate-password-button');
+const shareAccess = document.querySelector('#share-access');
+const unlockDialog = document.querySelector('#unlock-dialog');
+const unlockPassword = document.querySelector('#unlock-password');
+const unlockStatus = document.querySelector('#unlock-status');
+const unlockButton = document.querySelector('#unlock-button');
 restoreUpdateText(input);
 const buffer = createTextBuffer(input.value);
 const pasteHistory = createPasteHistory();
@@ -31,6 +41,16 @@ let historyCopyRequest = null;
 let sharePending = false;
 let activeShareLoad = null;
 let shareCopyRequest = null;
+let shareCopyInFlight = false;
+let shareSnapshot = '';
+let plainShareLink = '';
+let lastCopiedShareLink = '';
+let protectionRequest = null;
+let pendingProtection = null;
+let protectionTimer;
+let protectionRunning = false;
+let unlockRequest = null;
+let unlockAttempt = null;
 
 const historyStorageError = 'History could not be saved on this device. Changes will last only while this page is open.';
 
@@ -57,6 +77,7 @@ function render(text) {
 function cancelPendingPaste() {
   activePaste = null;
   activeShareLoad = null;
+  dismissUnlock();
   interaction += 1;
 }
 
@@ -82,10 +103,9 @@ input.addEventListener('paste', (event) => {
 });
 
 pasteButton.addEventListener('click', async () => {
+  cancelPendingPaste();
   const request = Symbol('paste');
-  activeShareLoad = null;
   activePaste = request;
-  interaction += 1;
   updateButtons();
   announce('Reading clipboard…');
 
@@ -221,15 +241,23 @@ shareButton.addEventListener('click', async () => {
   try {
     const link = await createShareLink(text, location.href);
     if (startedAt !== interaction) return;
+    shareSnapshot = text;
+    plainShareLink = link;
+    lastCopiedShareLink = '';
     shareLink.value = link;
+    shareProtect.checked = false;
+    sharePassword.value = '';
+    passwordControls.hidden = true;
+    shareAccess.textContent = 'Anyone with this link can read this snapshot of your text.';
     shareStatus.textContent = '';
+    updateShareControls();
     interaction += 1;
     shareDialog.showModal();
     announce('');
   } catch (error) {
     if (startedAt !== interaction) return;
     announce(error.code === 'too-large' ? 'This paste is too big to share.'
-      : error.code === 'unsupported' ? 'Encrypted sharing is unavailable in this browser. You can still copy your text.'
+      : error.code === 'unsupported' ? 'Sharing is unavailable in this browser. You can still copy your text.'
         : 'The share link could not be created. Try again.');
   } finally {
     sharePending = false;
@@ -237,14 +265,103 @@ shareButton.addEventListener('click', async () => {
   }
 });
 
-copyShareButton.addEventListener('click', async () => {
-  const text = shareLink.value;
-  if (!text || shareCopyRequest) return;
+function updateShareControls() {
+  copyShareButton.disabled = !shareLink.value || shareCopyInFlight;
+  copyPasswordButton.disabled = !shareLink.value || !sharePassword.value || shareCopyInFlight;
+  // An issued clipboard write cannot be cancelled. Keep mode/password stable
+  // until it settles, including across a close/reopen of this dialog.
+  shareProtect.disabled = shareCopyInFlight;
+  sharePassword.readOnly = shareCopyInFlight;
+  generatePasswordButton.disabled = shareCopyInFlight;
+}
+
+function invalidateProtection() {
+  clearTimeout(protectionTimer);
+  protectionRequest = null;
+  pendingProtection = null;
+  shareCopyRequest = null;
+}
+
+function queueProtectedLink(delay = 250) {
+  invalidateProtection();
+  // Never leave the previous password's link available while the field changes.
+  shareLink.value = '';
+  updateShareControls();
+  if (!sharePassword.value) {
+    shareStatus.textContent = '';
+    return;
+  }
+  const request = { text: shareSnapshot, password: sharePassword.value };
+  protectionRequest = request;
+  shareStatus.textContent = 'Protecting link…';
+  protectionTimer = setTimeout(() => {
+    pendingProtection = request;
+    buildProtectedLink();
+  }, delay);
+}
+
+async function buildProtectedLink() {
+  // Only one password derivation runs at a time; rapid typing queues the latest.
+  if (protectionRunning || !pendingProtection) return;
+  const request = pendingProtection;
+  pendingProtection = null;
+  if (request !== protectionRequest || !shareDialog.open || !shareProtect.checked) return;
+  protectionRunning = true;
+  const isCurrent = () => request === protectionRequest && shareDialog.open && shareProtect.checked && sharePassword.value === request.password;
+  try {
+    const link = await createShareLink(request.text, location.href, { password: request.password });
+    if (!isCurrent()) return;
+    shareLink.value = link;
+    shareStatus.textContent = lastCopiedShareLink ? 'Link changed. Copy the new link.' : '';
+  } catch (error) {
+    if (!isCurrent()) return;
+    shareStatus.textContent = error.code === 'too-large' ? 'This paste is too big to share.'
+      : error.code === 'password-too-long' ? 'This password is too long. Use a shorter password.'
+        : error.code === 'unsupported' ? 'Password protection is unavailable in this browser.'
+          : 'The protected link could not be created. Edit the password to try again.';
+  } finally {
+    protectionRunning = false;
+    updateShareControls();
+    if (pendingProtection) buildProtectedLink();
+  }
+}
+
+shareProtect.addEventListener('change', () => {
+  invalidateProtection();
+  sharePassword.value = '';
+  shareLink.value = shareProtect.checked ? '' : plainShareLink;
+  passwordControls.hidden = !shareProtect.checked;
+  shareStatus.textContent = !shareProtect.checked && lastCopiedShareLink && lastCopiedShareLink !== plainShareLink
+    ? 'Link changed. Copy the new link.' : '';
+  shareAccess.textContent = shareProtect.checked
+    ? 'The password is required to read this snapshot of your text.'
+    : 'Anyone with this link can read this snapshot of your text.';
+  updateShareControls();
+  if (shareProtect.checked) sharePassword.focus();
+});
+sharePassword.addEventListener('input', () => queueProtectedLink());
+generatePasswordButton.addEventListener('click', () => {
+  try {
+    sharePassword.value = generateSharePassword();
+    queueProtectedLink(0);
+  } catch {
+    invalidateProtection();
+    shareLink.value = '';
+    sharePassword.value = '';
+    updateShareControls();
+    shareStatus.textContent = 'Password generation is unavailable in this browser.';
+  }
+});
+
+async function copyShareField(field, button, label) {
+  const text = field.value;
+  if (!text || !shareLink.value || shareCopyInFlight) return;
   const request = Symbol('share-copy');
   shareCopyRequest = request;
-  const isCurrent = () => shareCopyRequest === request && shareDialog.open;
-  copyShareButton.disabled = true;
-  copyShareButton.setAttribute('aria-busy', 'true');
+  shareCopyInFlight = true;
+  const isCurrent = () => shareCopyRequest === request && shareDialog.open && field.value === text;
+  updateShareControls();
+  button.setAttribute('aria-busy', 'true');
   shareStatus.textContent = 'Copying…';
   let copied = false;
   try {
@@ -252,30 +369,116 @@ copyShareButton.addEventListener('click', async () => {
       await navigator.clipboard.writeText(text);
       copied = true;
     } else {
-      copied = copyWithSelection(text, shareLink);
+      copied = copyWithSelection(text, field);
     }
   } catch {
-    if (isCurrent()) copied = copyWithSelection(text, shareLink);
+    if (isCurrent()) copied = copyWithSelection(text, field);
+  } finally {
+    shareCopyInFlight = false;
+    button.setAttribute('aria-busy', 'false');
+    updateShareControls();
   }
   if (!isCurrent()) return;
   shareCopyRequest = null;
-  copyShareButton.disabled = false;
-  copyShareButton.setAttribute('aria-busy', 'false');
   if (copied) {
-    shareStatus.textContent = 'Share link copied.';
+    if (field === shareLink) lastCopiedShareLink = text;
+    const reminder = field === sharePassword && lastCopiedShareLink && lastCopiedShareLink !== shareLink.value
+      ? ' Copy the updated link too.' : '';
+    shareStatus.textContent = `${label} copied.${reminder}`;
   } else {
-    selectText(shareLink);
-    shareStatus.textContent = 'Copy access is unavailable. Link selected: press Ctrl+C or ⌘C, or touch and hold, then choose Copy.';
+    selectText(field);
+    shareStatus.textContent = `Copy access is unavailable. ${label} selected: press Ctrl+C or ⌘C, or touch and hold, then choose Copy.`;
   }
-});
+}
+
+copyShareButton.addEventListener('click', () => copyShareField(shareLink, copyShareButton, 'Share link'));
+copyPasswordButton.addEventListener('click', () => copyShareField(sharePassword, copyPasswordButton, 'Password'));
 
 shareDialog.addEventListener('close', () => {
-  shareCopyRequest = null;
+  invalidateProtection();
+  shareSnapshot = '';
+  plainShareLink = '';
+  lastCopiedShareLink = '';
   shareLink.value = '';
+  sharePassword.value = '';
+  shareProtect.checked = false;
+  passwordControls.hidden = true;
   shareStatus.textContent = '';
-  copyShareButton.disabled = false;
-  copyShareButton.setAttribute('aria-busy', 'false');
+  updateShareControls();
   shareButton.focus();
+});
+
+function dismissUnlock() {
+  if (unlockRequest?.request === activeShareLoad) activeShareLoad = null;
+  unlockRequest = null;
+  unlockAttempt = null;
+  unlockPassword.value = '';
+  unlockStatus.textContent = '';
+  unlockButton.disabled = false;
+  unlockButton.setAttribute('aria-busy', 'false');
+  if (unlockDialog.open) unlockDialog.close();
+}
+
+function showSharedText(text) {
+  buffer.setText(text);
+  if (!document.querySelector('dialog[open]')) {
+    input.focus();
+    input.setSelectionRange(0, 0);
+  }
+  announce('Shared text opened.');
+}
+
+function cancelUnlock() {
+  dismissUnlock();
+  updateButtons();
+  announce('Share link not opened. Your text is unchanged.');
+}
+
+document.querySelector('#cancel-unlock-button').addEventListener('click', cancelUnlock);
+unlockDialog.addEventListener('cancel', (event) => {
+  event.preventDefault();
+  cancelUnlock();
+});
+unlockDialog.addEventListener('close', () => {
+  if (!unlockDialog.open && unlockRequest) cancelUnlock();
+});
+unlockPassword.addEventListener('input', () => {
+  unlockAttempt = null;
+  unlockStatus.textContent = '';
+  unlockButton.disabled = false;
+  unlockButton.setAttribute('aria-busy', 'false');
+});
+document.querySelector('#unlock-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const pending = unlockRequest;
+  const password = unlockPassword.value;
+  if (!pending || !password || unlockAttempt) return;
+  const attempt = Symbol('unlock');
+  unlockAttempt = attempt;
+  const isCurrent = () => unlockAttempt === attempt && unlockRequest === pending && activeShareLoad === pending.request;
+  unlockButton.disabled = true;
+  unlockButton.setAttribute('aria-busy', 'true');
+  unlockStatus.textContent = 'Opening…';
+  try {
+    const text = await readShareLink(pending.hash, { password });
+    if (!isCurrent()) return;
+    dismissUnlock();
+    showSharedText(text);
+    updateButtons();
+  } catch (error) {
+    if (!isCurrent()) return;
+    unlockStatus.textContent = error.code === 'password-too-long' ? 'This password is too long. Use a shorter password.'
+      : error.code === 'unsupported' ? 'This browser cannot open this protected link. Try a newer browser.'
+        : 'Wrong password or damaged link.';
+    unlockPassword.focus();
+    unlockPassword.select();
+  } finally {
+    if (unlockAttempt === attempt) {
+      unlockAttempt = null;
+      unlockButton.disabled = false;
+      unlockButton.setAttribute('aria-busy', 'false');
+    }
+  }
 });
 
 async function openSharedText() {
@@ -292,18 +495,19 @@ async function openSharedText() {
   try {
     const text = await readShareLink(hash);
     if (activeShareLoad !== request) return;
-    buffer.setText(text);
-    if (!document.querySelector('dialog[open]')) {
-      input.focus();
-      input.setSelectionRange(0, 0);
-    }
-    announce('Shared text opened.');
+    showSharedText(text);
   } catch (error) {
     if (activeShareLoad !== request) return;
-    announce(error.code === 'unsupported' ? 'This browser cannot open this encrypted share link. Try a newer browser.'
-      : 'This share link is invalid or incomplete. Your text is unchanged.');
+    if (error.code === 'password-required') {
+      unlockRequest = { request, hash };
+      announce('');
+      openDialog(unlockDialog);
+    } else {
+      announce(error.code === 'unsupported' ? 'This browser cannot open this share link. Try a newer browser.'
+        : 'This share link is invalid or incomplete. Your text is unchanged.');
+    }
   } finally {
-    if (activeShareLoad === request) {
+    if (activeShareLoad === request && unlockRequest?.request !== request) {
       activeShareLoad = null;
       updateButtons();
     }

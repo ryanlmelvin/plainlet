@@ -108,11 +108,17 @@ textarea{flex:1;width:100%;height:auto;min-height:0;margin:0;padding:18px;resize
 #share-button{margin-left:auto;flex:none;color:var(--ink)}
 #share-help-button{color:var(--ink);margin-bottom:12px}
 .about-panel>button{display:flex;width:100%;justify-content:flex-start;padding-left:0;margin-bottom:4px}
-:is(#share-dialog,#share-help-dialog){width:min(440px,calc(100% - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:22px;color:var(--ink);background:var(--paper);border:1px solid var(--border);border-radius:12px;font-size:14px;line-height:1.6}
-:is(#share-dialog,#share-help-dialog)::backdrop{background:#0007}
-:is(#share-dialog,#share-help-dialog) h2{font-size:18px;margin:0 0 16px}
+:is(#share-dialog,#share-help-dialog,#unlock-dialog){width:min(440px,calc(100% - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:22px;color:var(--ink);background:var(--paper);border:1px solid var(--border);border-radius:12px;font-size:14px;line-height:1.6}
+:is(#share-dialog,#share-help-dialog,#unlock-dialog)::backdrop{background:#0007}
+:is(#share-dialog,#share-help-dialog,#unlock-dialog) h2{font-size:18px;margin:0 0 16px}
 :is(#share-dialog,#share-help-dialog) form{margin-top:18px;text-align:right}
-#share-link{display:block;width:100%;min-width:0;min-height:44px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--field);color:var(--ink);font-size:16px}
-#share-link:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
-#share-status:not(:empty){margin-top:12px}
+:is(#share-link,#share-password,#unlock-password){display:block;width:100%;min-width:0;min-height:44px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--field);color:var(--ink);font-size:16px}
+:is(#share-link,#share-password,#unlock-password):focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+:is(#share-status,#unlock-status):not(:empty){margin-top:12px}
 .share-actions{display:flex;justify-content:flex-end;gap:8px}
+.password-option{display:flex;align-items:center;gap:8px;min-height:44px;width:fit-content;cursor:pointer;margin-top:6px}
+.password-option input{width:18px;height:18px;margin:0;accent-color:var(--focus)}
+.share-password-row{display:flex;align-items:center;gap:6px}
+#share-password-help{font-size:12px;color:var(--muted);margin:6px 0 0}
+#unlock-dialog .share-actions{margin-top:18px}
+@media(max-width:400px){.share-password-row{flex-wrap:wrap}#share-password{flex-basis:100%}#generate-password-button{margin-right:auto}}

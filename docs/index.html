@@ -64,18 +64,39 @@
     </dialog>
     <dialog id="share-dialog" aria-labelledby="share-title">
       <h2 id="share-title">Share</h2>
-      <p>Anyone with this link can read this snapshot of your text.</p>
+      <p id="share-access">Anyone with this link can read this snapshot of your text.</p>
       <input id="share-link" type="text" aria-label="Share link" readonly spellcheck="false" autocomplete="off">
+      <label class="password-option"><input id="share-protect" type="checkbox">Password protect</label>
+      <div id="share-password-controls" hidden>
+        <div class="share-password-row">
+          <input id="share-password" type="text" aria-label="Password" placeholder="Password" aria-describedby="share-password-help" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off">
+          <button id="generate-password-button" type="button" class="button button-clear" aria-label="Generate password">Generate</button>
+          <button id="copy-password-button" type="button" class="button button-clear icon-button" aria-label="Copy password" title="Copy password"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M15 8V4H4v11h4"/></svg></button>
+        </div>
+        <p id="share-password-help">Choose a strong password and send it separately.</p>
+      </div>
       <p id="share-status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
       <form method="dialog" class="share-actions">
         <button class="button button-clear">Close</button>
         <button type="button" id="copy-share-button" class="button button-paste" autofocus>Copy link</button>
       </form>
     </dialog>
+    <dialog id="unlock-dialog" aria-labelledby="unlock-title">
+      <h2 id="unlock-title">Password required</h2>
+      <form id="unlock-form">
+        <input id="unlock-password" type="password" aria-label="Password" autocomplete="off" required autofocus>
+        <p id="unlock-status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+        <div class="share-actions">
+          <button type="button" id="cancel-unlock-button" class="button button-clear">Cancel</button>
+          <button type="submit" id="unlock-button" class="button button-paste">Open</button>
+        </div>
+      </form>
+    </dialog>
     <dialog id="share-help-dialog" aria-labelledby="share-help-title">
       <h2 id="share-help-title">Share?</h2>
       <p>Choose Share, then Copy link to send a snapshot of your text. Opening it loads the text into Plainlet. Later edits won’t change a link you already shared.</p>
-      <p>The text is compressed and encrypted with AES-256-GCM inside the link. The key is in the link too, so anyone with the full link can read it. Plainlet does not upload your text.</p>
+      <p>The text is compressed inside the link. Anyone with an ordinary link can read it. Plainlet does not upload your text.</p>
+      <p>For private sharing, turn on Password protect. Type a strong password or choose Generate, then copy the link and password separately. Recipients need both. Plainlet does not save passwords and cannot recover a forgotten one.</p>
       <p>Links do not expire and cannot be revoked. They may be saved in browser history or by the app you send them through.</p>
       <p>Links are limited to 8,000 characters and 1 MiB of text before compression. Some apps may shorten or break long links. If a paste is too big to share, you can still paste, edit, and copy it normally.</p>
       <form method="dialog"><button class="button button-paste">Close</button></form>
@@ -85,7 +106,7 @@
       <p>Plainlet is a static site hosted on GitHub Pages. It has no server-side storage for your text.</p>
       <p>Your current text clears when you reload or close the page. Pastes are saved in this browser’s local history until you delete them individually or choose Clear history. Copying puts text on your device’s clipboard.</p>
       <p>Only app files are cached on your device for offline use. Plainlet does not upload your text.</p>
-      <p>Share links contain an encrypted snapshot and its key. Anyone with the full link can read it. Links may be kept in browser history or messaging apps; they cannot be revoked.</p>
+      <p>Share links contain a snapshot of your text. Anyone with an ordinary link can read it. Optional password protection encrypts the snapshot; its password stays outside the link and is not saved by Plainlet. Links may be kept in browser history or messaging apps; they cannot be revoked.</p>
       <form method="dialog"><button class="button button-paste">Close</button></form>
     </dialog>
     <dialog id="install-dialog" aria-labelledby="install-title">

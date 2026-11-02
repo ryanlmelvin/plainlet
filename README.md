@@ -16,13 +16,19 @@ You can also type, edit, or paste directly into the text area. Rich-text styling
 
 ## Share a snapshot
 
-Shared text lives entirely in the URL fragment (after `#`), not on a server. Plainlet compresses the text when useful and encrypts it with AES-256-GCM using a new random 256-bit key and 96-bit nonce for each link. The key is included in the fragment: **anyone with the complete link can read the text**. Encryption does not protect against someone who obtains the link, authenticate the sender, or provide a password. AES-256 is a strong symmetric cipher; this feature makes no claim of being “quantum-proof.”
+Shared text lives entirely in the URL fragment (after `#`), not on a server. **Share → Copy link** creates an ordinary link, compressing the text when that makes it smaller. Ordinary links are not encrypted: **anyone with the complete link can read the text**. They require no password or encryption work and leave more room for text than the original key-in-link format.
+
+For a protected link, check **Password protect**, then enter a strong password or choose **Generate**. The password field starts empty; generation happens only when requested. **Copy link** stays disabled until the protected link is ready for the exact password shown. Every password edit clears the old link immediately and creates a new one. Copy the link and password separately; the recipient must enter the password to open the text. Plainlet never saves passwords and cannot recover forgotten ones. Passwords preserve all spaces and Unicode exactly, with a safety limit of 1,024 UTF-8 bytes.
+
+Password protection uses AES-256-GCM with a fresh 128-bit salt and 96-bit nonce per link. PBKDF2-HMAC-SHA256 derives the encryption key from the password using 600,000 iterations; the work factor is fixed by the format, not controlled by a received link. Generate uses 32 cryptographically random bytes encoded as a 43-character password. Only the salt, nonce, and ciphertext are in the URL; neither the password nor key is included. Someone with the link can attempt password guesses offline, so choose a strong password or use Generate. Password protection does not authenticate the sender or revoke copies already opened.
 
 Opening a link loads its snapshot into the editor without adding it to paste history. Plainlet removes the fragment from the current address after reading it, so clearing or reloading does not reopen the snapshot. A later edit does not change an existing share. Links have no expiration or revocation; the browser or the app used to send them may retain a copy.
 
 Sharing is limited to a complete URL of 8,000 characters and 1 MiB of UTF-8 text before compression. Actual capacity depends on the text and site address, and some messaging apps may truncate long URLs. If either limit is exceeded, Plainlet says **“This paste is too big to share.”** These limits apply only to sharing: the editor, Paste, and Copy have no added size limit.
 
-Sharing requires a secure browser context with Web Crypto. Compression uses the browser's Compression Streams API; browsers without it can create uncompressed links, but need decompression support to open compressed ones. Invalid, damaged, or oversized links leave existing text intact. Share links also open offline after the current app has been cached.
+Only password protection and opening original encrypted links require a secure browser context with Web Crypto. Ordinary sharing works without it. Compression uses the browser's Compression Streams API; browsers without it can create uncompressed links, but need decompression support to open compressed ones. Invalid, damaged, or oversized links leave existing text intact. An incorrect password allows retry or cancellation without changing existing text. All link formats also open offline after the current app has been cached.
+
+Original `#share=1` links remain readable and still include their key. New ordinary links use version 2, and password-protected links use version 3. Adding a password to a new link does not protect any ordinary link already sent.
 
 ## Install and use offline
 
