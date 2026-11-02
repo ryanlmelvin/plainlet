@@ -17,11 +17,15 @@ You can also type, edit, or paste directly into the text area. Rich-text styling
 
 Open the app online once to cache its files for offline use. The Plainlet menu includes installation instructions. Installation availability depends on the browser.
 
+When a new version has downloaded, **Update available** appears with an **Update now** button. Updating keeps your current text and history. Other open tabs keep their text and offer their own update button. Plainlet checks for updates when you return or reconnect, and once a minute while visible.
+
+If an older installed version does not have the update button yet, open [Update Plainlet](https://ryanlmelvin.github.io/plainlet/update.html) in a new tab and choose **Update now** once. This loads the latest app without clearing your saved history. Text in an existing tab stays there; copy it before closing that tab if you need it.
+
 Clipboard buttons require HTTPS (or localhost) and may request browser permission. If access is blocked, focus the text area and use your device's normal Paste or Copy action. The app provides instructions when this happens.
 
 ## Privacy and storage
 
-Text stays on your device. There are no uploads, analytics, accounts, or saved drafts. Reloading starts with an empty buffer. Successful pastes through the Paste button or directly into the text area are saved in this browser's local storage, newest first. Exact duplicates move to the top; empty or whitespace-only pastes and ordinary typing are not saved. You can copy or delete individual entries, or clear all history. Like other sites, a browser may keep a page alive when you navigate away and return.
+Text stays on your device. There are no uploads, analytics, accounts, or automatic saved drafts. Ordinary reloads start with an empty buffer. Choosing **Update now** briefly saves the current text in this tab's session storage, then restores it and removes the snapshot after updating. Successful pastes through the Paste button or directly into the text area are saved in this browser's local storage, newest first. Exact duplicates move to the top; empty or whitespace-only pastes and ordinary typing are not saved. You can copy or delete individual entries, or clear all history. Like other sites, a browser may keep a page alive when you navigate away and return.
 
 History stays on this browser and device until you delete it or clear the site's browser data. If local storage is blocked or full, the app reports it and keeps history changes only for the current page session.
 
@@ -50,7 +54,7 @@ Local tests use installed Google Chrome. CI uses Playwright Chromium. The tests 
 
 Publish the `docs/` directory on `main` using **Settings → Pages → Deploy from a branch**. All app, manifest, and service-worker paths are relative, so deployment also works under another repository name. `.nojekyll` disables Jekyll processing.
 
-When changing any app file, increment `VERSION` in `docs/sw.js` so the next release gets a fresh offline cache. A new service worker activates after existing app tabs/windows close; it never forcibly reloads a page containing text. Reopen the app online to receive updates.
+When changing any app file, increment `VERSION` in `docs/sw.js` so the next release gets a fresh offline cache. Downloads bypass the HTTP cache and are saved under the app's canonical URLs. A new service worker activates when the user chooses **Update now**, or after all old app tabs/windows close. Only a tab whose user requested an update reloads; other tabs are left open. The standalone `docs/update.html` recovery page is deliberately outside the offline cache so older versions can reach it.
 
 ## History storage
 

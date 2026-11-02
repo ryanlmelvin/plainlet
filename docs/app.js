@@ -1,11 +1,13 @@
 import { createTextBuffer } from './text-buffer.js';
 import { createPasteHistory } from './paste-history.js';
+import { restoreUpdateText, setupUpdates } from './sw-register.js';
 
 const input = document.querySelector('#text-input');
 const pasteButton = document.querySelector('#paste-button');
 const clearButton = document.querySelector('#clear-button');
 const copyButton = document.querySelector('#copy-button');
 const status = document.querySelector('#status');
+restoreUpdateText(input);
 const buffer = createTextBuffer(input.value);
 const pasteHistory = createPasteHistory();
 const historyButton = document.querySelector('#history-button');
@@ -332,3 +334,5 @@ privacyDialog.addEventListener('close', () => {
   aboutMenu.open = true;
   document.querySelector('#privacy-button').focus();
 });
+
+setupUpdates(input);

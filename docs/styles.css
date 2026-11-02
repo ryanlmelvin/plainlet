@@ -59,7 +59,11 @@ textarea{flex:1;width:100%;height:auto;min-height:0;margin:0;padding:18px;resize
 @media(max-width:360px){.toolbar{gap:2px;padding:8px 6px}.toolbar .button{padding-inline:6px;min-width:44px;white-space:nowrap}.toolbar .button svg{display:none}}
 
 .app-shell{gap:10px}
-.site-header{flex:none}
+.site-header{flex:none;flex-wrap:wrap}
+#update-notice{display:flex;align-items:center;gap:8px;margin-left:auto;max-width:100%}
+#update-notice[hidden]{display:none}
+#update-status{font-size:12px;line-height:1.5;color:var(--muted)}
+#update-button{flex:none}
 .about-menu{position:relative}
 .about-menu summary{cursor:pointer;list-style:none;min-height:44px;width:fit-content;padding:4px;border-radius:8px}
 .about-menu summary::-webkit-details-marker{display:none}

@@ -1,6 +1,6 @@
 // Bump VERSION whenever a shipped app file changes. Each release is cached
-// together; new workers activate after old tabs close, preserving open text.
-const VERSION = '1.3.1';
+// together; new workers wait for Update now or for old app tabs to close.
+const VERSION = '1.4.0';
 const SCOPE = new URL('./', self.location.href).href;
 const CACHE_PREFIX = `plainlet:${SCOPE}:`;
 const CACHE_NAME = `${CACHE_PREFIX}${VERSION}`;
@@ -13,7 +13,21 @@ const FILES = [
 const APP_URLS = new Set(FILES.map((path) => new URL(path, SCOPE).href));
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(FILES)));
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await Promise.all(FILES.map(async (file) => {
+      const canonical = new URL(file, SCOPE);
+      const download = new URL(canonical);
+      download.searchParams.set('release', VERSION);
+      const response = await fetch(download, { cache: 'reload' });
+      if (!response.ok) throw new Error(`Could not download ${file}: ${response.status}`);
+      await cache.put(canonical.href, response);
+    }));
+  })());
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', (event) => {

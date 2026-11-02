@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>Update Plainlet</title>
+    <style>
+      :root{font-family:system-ui,sans-serif;color:#25352d;background:#f4f5ef}
+      body{max-width:440px;margin:10vh auto;padding:24px;line-height:1.5}
+      h1{font-size:22px;margin:0 0 20px}button{font:inherit;min-height:44px;padding:10px 18px;border:0;border-radius:9px;background:#d8efb2;color:#2c4027;cursor:pointer}button:disabled{opacity:.5;cursor:default}
+      #status{font-size:14px}#status:empty{display:none}a{color:inherit;text-underline-offset:3px}
+      @media(prefers-color-scheme:dark){:root{color:#e6ebdf;background:#1b231f}}
+    </style>
+  </head>
+  <body>
+    <h1>Update Plainlet</h1>
+    <p id="status" role="status" aria-live="polite"></p>
+    <button type="button" id="update">Update now</button>
+    <p><a href="./">Back to Plainlet</a></p>
+    <script type="module">
+      // Keep this recovery page independent of assets cached by older releases.
+      const button = document.querySelector('#update');
+      const status = document.querySelector('#status');
+      function waitForInstallation(worker) {
+        return new Promise((resolve, reject) => {
+          const finish = (error) => {
+            clearTimeout(timeout);
+            worker.removeEventListener('statechange', check);
+            error ? reject(error) : resolve();
+          };
+          const check = () => {
+            if (worker.state === 'installed' || worker.state === 'activated') finish();
+            else if (worker.state === 'redundant') finish(new Error('Installation failed.'));
+          };
+          const timeout = setTimeout(() => finish(new Error('Installation timed out.')), 30000);
+          worker.addEventListener('statechange', check);
+          check();
+        });
+      }
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        status.textContent = 'Checking for updates…';
+        try {
+          const registration = await navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' });
+          try { await registration.update(); } catch (error) { if (!registration.waiting) throw error; }
+          if (registration.installing) await waitForInstallation(registration.installing);
+          // Allow the waiting slot to settle after installation finishes.
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          if (registration.waiting) {
+            status.textContent = 'Updating…';
+            await new Promise((resolve, reject) => {
+              const finish = (error) => {
+                clearTimeout(timeout);
+                navigator.serviceWorker.removeEventListener('controllerchange', activated);
+                error ? reject(error) : resolve();
+              };
+              const activated = () => finish();
+              const timeout = setTimeout(() => finish(new Error('Activation timed out.')), 15000);
+              navigator.serviceWorker.addEventListener('controllerchange', activated);
+              try { registration.waiting.postMessage({ type: 'SKIP_WAITING' }); } catch (error) { finish(error); }
+            });
+          }
+          location.replace('./');
+        } catch {
+          status.textContent = 'The update could not load. Check your connection and try again.';
+          button.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
