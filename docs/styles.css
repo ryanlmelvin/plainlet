@@ -32,7 +32,8 @@ textarea:focus-visible{outline:2px solid var(--focus)}
 .button-paste:hover:not(:disabled){background:#cce69e}
 .button-clear{background:transparent;color:var(--muted)}
 .button-clear:hover:not(:disabled){background:var(--border);color:var(--ink)}
-.button-copy{margin-left:auto;background:var(--ink);color:var(--paper);min-width:114px}
+#history-button{margin-left:auto}
+.button-copy{background:var(--ink);color:var(--paper);min-width:114px}
 .button-copy:hover:not(:disabled){background:#41604e}
 .button:focus-visible{outline:2px solid var(--focus);outline-offset:3px}
 .button:active:not(:disabled){transform:translateY(1px)}

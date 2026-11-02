@@ -35,7 +35,7 @@ async function mockClipboard(page, options = {}) {
   }, options);
 }
 
-test('keeps history beside clear text in the editor toolbar', async ({ page }) => {
+test('keeps history immediately beside copy on the right of the editor toolbar', async ({ page }) => {
   await mockClipboard(page);
   await page.goto('./');
   await expect(page.locator('.toolbar').getByRole('button')).toHaveText(['Paste', 'Clear text', 'History', 'Copy']);
@@ -45,10 +45,11 @@ test('keeps history beside clear text in the editor toolbar', async ({ page }) =
   await expect(page.getByRole('textbox', { name: 'Your plain text' })).toBeEditable();
   const historyButton = page.getByRole('button', { name: 'History', exact: true });
   await expect(historyButton).toBeEnabled();
-  const clearBounds = await page.getByRole('button', { name: 'Clear text' }).boundingBox();
+  const copyBounds = await page.getByRole('button', { name: 'Copy', exact: true }).boundingBox();
   const historyBounds = await historyButton.boundingBox();
-  expect(historyBounds.y).toBe(clearBounds.y);
-  expect(historyBounds.x).toBeGreaterThanOrEqual(clearBounds.x + clearBounds.width);
+  const toolbarGap = await page.locator('.toolbar').evaluate((toolbar) => parseFloat(getComputedStyle(toolbar).columnGap));
+  expect(historyBounds.y).toBe(copyBounds.y);
+  expect(copyBounds.x - historyBounds.x - historyBounds.width).toBeCloseTo(toolbarGap, 1);
 });
 
 test('paste and copy preserve Unicode, literal HTML, spacing, and newlines', async ({ page }) => {
