@@ -1,6 +1,6 @@
 // Bump VERSION whenever a shipped app file changes. Each release is cached
 // together; new workers activate after old tabs close, preserving open text.
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const SCOPE = new URL('./', self.location.href).href;
 const CACHE_PREFIX = `plainlet:${SCOPE}:`;
 const CACHE_NAME = `${CACHE_PREFIX}${VERSION}`;

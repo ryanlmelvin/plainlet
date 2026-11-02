@@ -73,7 +73,6 @@ test('keyboard editing remains a plain-text buffer and clear restores focus', as
   await page.getByRole('button', { name: 'Clear text' }).click();
   await expect(input).toHaveValue('');
   await expect(input).toBeFocused();
-  await expect(page.locator('#character-count')).toHaveText('0 characters');
 });
 
 test('an empty clipboard does not erase existing text', async ({ page }) => {

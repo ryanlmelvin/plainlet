@@ -5,9 +5,7 @@ const pasteButton = document.querySelector('#paste-button');
 const clearButton = document.querySelector('#clear-button');
 const copyButton = document.querySelector('#copy-button');
 const status = document.querySelector('#status');
-const characterCount = document.querySelector('#character-count');
 const buffer = createTextBuffer(input.value);
-const numberFormat = new Intl.NumberFormat();
 
 let activePaste = null;
 let copyPending = false;
@@ -28,8 +26,6 @@ function updateButtons() {
 
 function render(text) {
   if (input.value !== text) input.value = text;
-  const count = Array.from(text).length;
-  characterCount.textContent = `${numberFormat.format(count)} ${count === 1 ? 'character' : 'characters'}`;
   updateButtons();
 }
 

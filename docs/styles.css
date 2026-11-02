@@ -45,3 +45,14 @@ footer{display:flex;justify-content:space-between;gap:14px;color:var(--muted);fo
 @media(max-width:340px){.privacy-note{max-width:90px;line-height:1.4}.button{padding:10px}.button-copy{min-width:72px}.editor-meta{font-size:10px}footer{flex-direction:column;gap:3px}}
 @media(prefers-color-scheme:dark){:root{color:#e6ebdf;background:#1b231f;--paper:#242e28;--field:#242e28;--muted:#a7b3a7;--border:#3c483e;--ink:#e6ebdf;--accent:#c5e69c;--focus:#b5d88f}.toolbar{background:#202a24}.button-copy:hover:not(:disabled){background:#c8d7bc}.status[data-kind="error"]{color:#edb398}textarea::placeholder{color:#9aa598}}
 @media(prefers-reduced-motion:reduce){.button{transition:none}}
+
+/* The workspace fills the available screen; only actions and feedback surround it. */
+.app-shell{width:100%;height:100dvh;min-height:320px;margin:0;padding: max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+main{display:flex;flex-direction:column;min-height:0;padding:0;gap:10px}
+.subtitle{flex:none;font-size:13px;line-height:1.5;margin:0;padding:0 4px}
+.editor{display:flex;flex-direction:column;flex:1;min-height:0;border-radius:12px}
+textarea{flex:1;width:100%;height:auto;min-height:0;margin:0;padding:18px;resize:none;border-radius:0}
+.toolbar{flex:none;padding:12px;gap:8px}
+.status{flex:none;min-height:0;margin:0 4px;font-size:12px}
+.status:empty{display:none}
+@media(max-width:600px){.app-shell{width:100%;padding:10px}.toolbar{padding:10px}.subtitle{font-size:12px}textarea{padding:14px}}
