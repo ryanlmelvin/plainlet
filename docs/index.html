@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#f4f5ef">
+    <meta name="description" content="A little space for plain text. Paste, clear, and copy without formatting. Private, offline-ready, and free.">
+    <meta name="color-scheme" content="light dark">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Plainlet">
+    <title>Plainlet — just the text</title>
+    <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="stylesheet" href="./styles.css">
+    <script type="module" src="./app.js"></script>
+    <script type="module" src="./sw-register.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="site-header">
+        <div class="brand"><img src="./icons/icon.svg" width="36" height="36" alt=""><span>Plainlet</span></div>
+        <span class="privacy-note"><span class="privacy-dot" aria-hidden="true"></span>Only on your device</span>
+      </header>
+      <main>
+        <div class="intro">
+          <p class="eyebrow">LESS FORMATTING. MORE CLARITY.</p>
+          <h1>Just the text.</h1>
+          <p class="subtitle">Paste it in. Copy it clean.</p>
+        </div>
+        <section class="editor" aria-label="Plain text workspace">
+          <div class="editor-heading"><label for="text-input">Your plain text</label><span class="format-badge" aria-hidden="true">Aa <span>→</span> Aa</span></div>
+          <textarea id="text-input" placeholder="A fresh start for your text…" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-describedby="text-help"></textarea>
+          <div class="editor-meta"><span id="text-help">Paste here or use the button below.</span><span id="character-count">0 characters</span></div>
+          <div class="toolbar">
+            <button type="button" id="paste-button" class="button button-paste"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5H6a2 2 0 0 0-2 2v13h16V7a2 2 0 0 0-2-2h-3M9 3h6v4H9zM8 12h8M8 16h5"/></svg>Paste</button>
+            <button type="button" id="clear-button" class="button button-clear" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg>Clear text</button>
+            <button type="button" id="copy-button" class="button button-copy" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M15 8V4H4v11h4"/></svg>Copy</button>
+          </div>
+        </section>
+        <p id="status" class="status" role="status" aria-live="polite" aria-atomic="true">Ready when you are.</p>
+        <noscript><p class="noscript">Enable JavaScript to use Paste, Clear text, and Copy.</p></noscript>
+      </main>
+      <footer><span>No uploads. No saved history.</span><span id="offline-status">Offline support loading…</span></footer>
+    </div>
+  </body>
+</html>

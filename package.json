@@ -1,0 +1,16 @@
+{
+  "name": "plainlet",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A tiny offline-ready plain-text clipboard utility.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "test": "playwright test",
+    "test:report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1"
+  }
+}
