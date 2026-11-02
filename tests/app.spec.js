@@ -35,7 +35,7 @@ async function mockClipboard(page, options = {}) {
   }, options);
 }
 
-test('has exactly three controls with useful empty-state behavior', async ({ page }) => {
+test('keeps the three editor controls and provides history at the bottom', async ({ page }) => {
   await mockClipboard(page);
   await page.goto('./');
   await expect(page.locator('.toolbar').getByRole('button')).toHaveCount(3);
@@ -43,6 +43,11 @@ test('has exactly three controls with useful empty-state behavior', async ({ pag
   await expect(page.getByRole('button', { name: 'Clear text' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Copy', exact: true })).toBeDisabled();
   await expect(page.getByRole('textbox', { name: 'Your plain text' })).toBeEditable();
+  const historyButton = page.getByRole('button', { name: 'History', exact: true });
+  await expect(historyButton).toBeEnabled();
+  const editorBounds = await page.locator('.editor').boundingBox();
+  const historyBounds = await historyButton.boundingBox();
+  expect(historyBounds.y).toBeGreaterThanOrEqual(editorBounds.y + editorBounds.height);
 });
 
 test('paste and copy preserve Unicode, literal HTML, spacing, and newlines', async ({ page }) => {
@@ -130,7 +135,7 @@ test('failed copy selects text and explains the manual fallback', async ({ page 
   expect(await page.evaluate(() => window.testClipboard.written)).toEqual([]);
 });
 
-test('a reload clears the buffer without saving text in browser storage', async ({ page }) => {
+test('a reload clears typed text without adding it to history', async ({ page }) => {
   await mockClipboard(page);
   await page.goto('./');
   await page.getByRole('textbox').fill('Private text must not persist');
@@ -186,7 +191,7 @@ test('desktop layout has no overflow and produces a review screenshot', async ({
   await page.screenshot({ path: testInfo.outputPath('desktop.png'), fullPage: true });
 });
 
-test('mobile layout keeps all three controls usable without horizontal overflow', async ({ browser }, testInfo) => {
+test('mobile layout keeps the editor and history controls usable without horizontal overflow', async ({ browser }, testInfo) => {
   const context = await browser.newContext({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   const page = await context.newPage();
   await mockClipboard(page);
@@ -205,4 +210,234 @@ test('mobile layout keeps all three controls usable without horizontal overflow'
   await expect(page.getByRole('status')).toHaveText('Plain text copied.');
   await page.screenshot({ path: testInfo.outputPath('mobile.png'), fullPage: true });
   await context.close();
+});
+
+async function pasteText(page, text) {
+  await page.evaluate((value) => { window.testClipboard.text = value; }, text);
+  await page.getByRole('button', { name: 'Paste', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Your plain text' })).toHaveValue(text);
+}
+
+async function openHistory(page) {
+  await page.getByRole('button', { name: 'History', exact: true }).click();
+  const history = page.getByRole('dialog', { name: 'History', exact: true });
+  await expect(history).toBeVisible();
+  return history;
+}
+
+test('empty history can be closed with Escape and returns focus to its button', async ({ page }) => {
+  await mockClipboard(page);
+  await page.goto('./');
+  const history = await openHistory(page);
+  await expect(history.getByRole('listitem')).toHaveCount(0);
+  await expect(history.getByRole('button', { name: 'Clear history', exact: true })).toBeDisabled();
+  await expect(history.getByRole('button', { name: 'Close history', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(history).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'History', exact: true })).toBeFocused();
+});
+
+test('history saves successful pastes newest first, coalesces duplicates, and survives reload', async ({ page }) => {
+  await mockClipboard(page);
+  await page.goto('./');
+  const first = '  Résumé — 你好 👩‍💻\n\t<b>literal HTML</b>\n\ntrailing spaces  ';
+  await pasteText(page, first);
+  await pasteText(page, 'Second paste');
+  await pasteText(page, first);
+  await page.reload();
+  await expect(page.getByRole('textbox', { name: 'Your plain text' })).toHaveValue('');
+  const history = await openHistory(page);
+  await expect(history.getByRole('listitem')).toHaveCount(2);
+  expect(await history.locator('pre').allTextContents()).toEqual([first, 'Second paste']);
+  await expect(history.locator('b')).toHaveCount(0);
+});
+
+test('native paste records its plain text payload without recording typing or empty pastes', async ({ page }) => {
+  await mockClipboard(page);
+  await page.goto('./');
+  const input = page.getByRole('textbox', { name: 'Your plain text' });
+  await input.fill('Typed prefix: ');
+  await input.evaluate((field) => {
+    const data = new DataTransfer();
+    data.setData('text/plain', ' \n\t ');
+    field.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+  });
+  const pasted = '<img src=x onerror="window.unexpectedMarkup = true">\nPlain paste';
+  // Dispatch the browser events without accessing the machine clipboard. A
+  // synthetic paste has no default insertion, so reproduce that insertion only
+  // when the app has left the event's default behavior intact.
+  await input.evaluate((field, text) => {
+    field.focus();
+    field.setSelectionRange(field.value.length, field.value.length);
+    const data = new DataTransfer();
+    data.setData('text/plain', text);
+    data.setData('text/html', '<strong>Unwanted rich text</strong>');
+    const event = new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true });
+    field.dispatchEvent(event);
+    if (!event.defaultPrevented) {
+      field.setRangeText(text, field.selectionStart, field.selectionEnd, 'end');
+      field.dispatchEvent(new InputEvent('input', { inputType: 'insertFromPaste', data: text, bubbles: true }));
+    }
+  }, pasted);
+  await expect(input).toHaveValue(`Typed prefix: ${pasted}`);
+  await input.fill('Edited after pasting');
+  await page.getByRole('button', { name: 'Paste', exact: true }).click();
+  await expect(input).toHaveValue('Edited after pasting');
+  const history = await openHistory(page);
+  await expect(history.getByRole('listitem')).toHaveCount(1);
+  expect(await history.locator('pre').allTextContents()).toEqual([pasted]);
+  await expect(history.locator('img')).toHaveCount(0);
+  expect(await page.evaluate(() => window.unexpectedMarkup)).toBeUndefined();
+});
+
+test('history copies the exact past paste without replacing the current editor text', async ({ page }) => {
+  await mockClipboard(page);
+  await page.goto('./');
+  const saved = '  Saved 👋\n\t<b>plain text</b>  ';
+  await pasteText(page, saved);
+  await page.getByRole('textbox').fill('Keep editing this');
+  const history = await openHistory(page);
+  await history.getByRole('listitem').getByRole('button', { name: 'Copy paste', exact: true }).click();
+  expect(await page.evaluate(() => window.testClipboard.written)).toEqual([{ type: 'text/plain', text: saved }]);
+  await expect(history.getByRole('status')).toContainText('copied');
+  await expect(page.locator('#text-input')).toHaveValue('Keep editing this');
+  await expect(history.getByRole('listitem')).toHaveCount(1);
+});
+
+test('deleting one paste and clearing history persist without clearing the editor', async ({ page }) => {
+  await mockClipboard(page);
+  await page.goto('./');
+  await pasteText(page, 'First paste');
+  await pasteText(page, 'Second paste');
+  let history = await openHistory(page);
+  await history.getByRole('listitem').filter({ hasText: 'First paste' }).getByRole('button', { name: 'Delete paste', exact: true }).click();
+  await expect(history.getByRole('listitem')).toHaveCount(1);
+  expect(await history.locator('pre').allTextContents()).toEqual(['Second paste']);
+  await expect(page.locator('#text-input')).toHaveValue('Second paste');
+  await page.reload();
+  await page.getByRole('textbox').fill('Unrelated current work');
+  history = await openHistory(page);
+  expect(await history.locator('pre').allTextContents()).toEqual(['Second paste']);
+  await history.getByRole('button', { name: 'Clear history', exact: true }).click();
+  await expect(history.getByRole('listitem')).toHaveCount(0);
+  await expect(history.getByRole('button', { name: 'Clear history', exact: true })).toBeDisabled();
+  await expect(page.locator('#text-input')).toHaveValue('Unrelated current work');
+  await page.reload();
+  history = await openHistory(page);
+  await expect(history.getByRole('listitem')).toHaveCount(0);
+});
+
+test('history additions, deletion, and clearing stay in sync across tabs', async ({ page, context }) => {
+  await mockClipboard(page);
+  await page.goto('./');
+  await pasteText(page, 'First tab paste');
+  const secondPage = await context.newPage();
+  await mockClipboard(secondPage);
+  await secondPage.goto('./');
+  const secondHistory = await openHistory(secondPage);
+  await expect(secondHistory.locator('pre')).toHaveText(['First tab paste']);
+  await pasteText(page, 'Another paste');
+  await expect(secondHistory.locator('pre')).toHaveText(['Another paste', 'First tab paste']);
+  await secondHistory.getByRole('listitem').filter({ hasText: 'First tab paste' }).getByRole('button', { name: 'Delete paste', exact: true }).click();
+  const firstHistory = await openHistory(page);
+  await expect(firstHistory.locator('pre')).toHaveText(['Another paste']);
+  await firstHistory.getByRole('button', { name: 'Clear history', exact: true }).click();
+  await expect(secondHistory.getByRole('listitem')).toHaveCount(0);
+  await secondHistory.getByRole('button', { name: 'Close history', exact: true }).click();
+  await pasteText(secondPage, 'After clearing');
+  await expect(firstHistory.locator('pre')).toHaveText(['After clearing']);
+  await secondPage.close();
+});
+
+test('cancelled and denied clipboard reads never enter history', async ({ page }) => {
+  await mockClipboard(page, { readMode: 'pending' });
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Paste', exact: true }).click();
+  await page.getByRole('button', { name: 'Clear text', exact: true }).click();
+  await page.evaluate(() => window.testClipboard.resolveRead('Cancelled paste'));
+  await expect(page.getByRole('button', { name: 'Paste', exact: true })).toBeEnabled();
+  await page.evaluate(() => { window.testClipboard.readMode = 'denied'; });
+  await page.getByRole('button', { name: 'Paste', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Clipboard access is unavailable');
+  const history = await openHistory(page);
+  await expect(history.getByRole('listitem')).toHaveCount(0);
+});
+
+test('unavailable storage preserves pasted text and history for the current session', async ({ page }) => {
+  await mockClipboard(page);
+  await page.addInitScript(() => {
+    Storage.prototype.setItem = () => { throw new DOMException('Storage full', 'QuotaExceededError'); };
+  });
+  await page.goto('./');
+  await pasteText(page, 'Still usable when storage is full');
+  await expect(page.getByRole('status')).toContainText('History could not be saved');
+  await expect(page.getByRole('status')).toContainText('while this page is open');
+  let history = await openHistory(page);
+  expect(await history.locator('pre').allTextContents()).toEqual(['Still usable when storage is full']);
+  await history.getByRole('button', { name: 'Copy paste', exact: true }).click();
+  expect(await page.evaluate(() => window.testClipboard.written[0].text)).toBe('Still usable when storage is full');
+  await page.reload();
+  history = await openHistory(page);
+  await expect(history.getByRole('listitem')).toHaveCount(0);
+});
+
+test('failed history copy selects the saved text and preserves current work', async ({ page }) => {
+  await mockClipboard(page, { writeMode: 'denied' });
+  await page.goto('./');
+  await pasteText(page, 'Copy saved text manually');
+  await page.getByRole('textbox').fill('Current work stays here');
+  const history = await openHistory(page);
+  await history.getByRole('button', { name: 'Copy paste', exact: true }).click();
+  await expect(history.getByRole('status')).toContainText('Ctrl+C or ⌘C');
+  expect(await page.evaluate(() => window.getSelection().toString())).toBe('Copy saved text manually');
+  await expect(page.locator('#text-input')).toHaveValue('Current work stays here');
+  expect(await page.evaluate(() => window.testClipboard.written)).toEqual([]);
+});
+
+test('opening history prevents a pending editor copy from selecting text behind the dialog', async ({ page }) => {
+  await mockClipboard(page);
+  await page.goto('./');
+  const input = page.getByRole('textbox', { name: 'Your plain text' });
+  await input.fill('Keep this selection');
+  await input.evaluate((field) => { field.setSelectionRange(3, 3); });
+  await page.evaluate(() => {
+    window.testClipboard.fallbackCalls = [];
+    navigator.clipboard.writeText = () => new Promise((resolve, reject) => {
+      window.testClipboard.rejectWrite = reject;
+    });
+    document.execCommand = (command) => {
+      window.testClipboard.fallbackCalls.push(command);
+      return false;
+    };
+  });
+  await page.getByRole('button', { name: 'Copy', exact: true }).click();
+  const history = await openHistory(page);
+  await page.evaluate(() => window.testClipboard.rejectWrite(new DOMException('Denied', 'NotAllowedError')));
+  await expect(page.locator('#copy-button')).toBeEnabled();
+  expect(await page.evaluate(() => window.testClipboard.fallbackCalls)).toEqual([]);
+  expect(await page.locator('#text-input').evaluate((field) => [field.selectionStart, field.selectionEnd])).toEqual([3, 3]);
+  await expect(history).toBeVisible();
+  await expect(history.getByRole('button', { name: 'Close history', exact: true })).toBeFocused();
+});
+
+test('mobile history wraps long pastes and keeps icon controls usable', async ({ page }, testInfo) => {
+  await mockClipboard(page);
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('./');
+  await pasteText(page, 'LongUnbrokenPaste'.repeat(80));
+  await pasteText(page, 'Another paste\nwith a second line');
+  const history = await openHistory(page);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  expect(await history.evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth)).toBeTruthy();
+  for (const button of await history.getByRole('button').all()) {
+    const bounds = await button.boundingBox();
+    expect(bounds.width).toBeGreaterThanOrEqual(44);
+    expect(bounds.height).toBeGreaterThanOrEqual(44);
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(375);
+  }
+  for (const icon of await history.locator('button svg').all()) {
+    await expect(icon).toBeVisible();
+  }
+  await page.screenshot({ path: testInfo.outputPath('mobile-history.png'), fullPage: true });
 });

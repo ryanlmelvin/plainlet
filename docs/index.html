@@ -22,6 +22,8 @@
         <details class="about-menu">
           <summary class="brand" aria-label="Plainlet menu"><img src="./icons/icon.svg" width="36" height="36" alt=""><span>Plainlet</span></summary>
           <div class="about-panel">
+            <button type="button" id="install-button" class="button button-clear">Install on device</button>
+            <button type="button" id="privacy-button" class="button button-clear">Privacy</button>
             <h2>About Plainlet</h2>
             <p>Developed by <a href="https://ryanlmelvin.com">Ryan L. Melvin</a>.</p>
             <p>Licensed under the <a href="https://github.com/ryanlmelvin/plainlet/blob/main/LICENSE">MIT license</a>.</p>
@@ -41,7 +43,50 @@
         <p id="status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
         <noscript><p class="noscript">Enable JavaScript to use Paste, Clear text, and Copy.</p></noscript>
       </main>
+      <button type="button" id="history-button" class="button button-clear" aria-haspopup="dialog" aria-controls="history-dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.6 7M3 4v7h7M12 7v5l3 2"/></svg>History</button>
       <span id="offline-status" hidden></span>
     </div>
+    <dialog id="history-dialog" aria-labelledby="history-title">
+      <div class="history-header">
+        <h2 id="history-title">History</h2>
+        <button type="button" id="clear-history-button" class="button button-clear" disabled>Clear history</button>
+        <button type="button" id="close-history-button" class="button button-clear icon-button" aria-label="Close history" title="Close history" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </div>
+      <p id="history-empty">No pastes yet.</p>
+      <ul id="history-list" aria-label="Past pastes" hidden></ul>
+      <p id="history-status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+    </dialog>
+    <dialog id="privacy-dialog" aria-labelledby="privacy-title">
+      <h2 id="privacy-title">Privacy</h2>
+      <p>Plainlet is a static site hosted on GitHub Pages. It has no server-side storage for your text.</p>
+      <p>Your current text clears when you reload or close the page. Pastes are saved in this browser’s local history until you delete them individually or choose Clear history. Copying puts text on your device’s clipboard.</p>
+      <p>Only app files are cached on your device for offline use. Plainlet does not upload your text.</p>
+      <form method="dialog"><button class="button button-paste">Close</button></form>
+    </dialog>
+    <dialog id="install-dialog" aria-labelledby="install-title">
+      <h2 id="install-title">Install on device</h2>
+      <details open>
+        <summary>iPhone or iPad</summary>
+        <ol>
+          <li>Open Plainlet in Safari.</li>
+          <li>Tap Share (the square with an up arrow). You may need to tap the … menu first.</li>
+          <li>Choose Add to Home Screen. If missing, find it under Edit Actions.</li>
+          <li>Turn on Open as Web App if shown, then tap Add.</li>
+        </ol>
+      </details>
+      <details open>
+        <summary>Android</summary>
+        <ol>
+          <li>Open Plainlet in Chrome.</li>
+          <li>Tap the ⋮ menu, then Add to home screen or Install app.</li>
+          <li>Choose Install if offered and follow the prompts.</li>
+        </ol>
+      </details>
+      <details>
+        <summary>Computer</summary>
+        <p>In Chrome or Edge, look for Install in the address bar or browser menu. On a Mac in Safari, choose File → Add to Dock.</p>
+      </details>
+      <form method="dialog"><button class="button button-paste">Close</button></form>
+    </dialog>
   </body>
 </html>

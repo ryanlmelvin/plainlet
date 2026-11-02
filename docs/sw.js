@@ -1,11 +1,11 @@
 // Bump VERSION whenever a shipped app file changes. Each release is cached
 // together; new workers activate after old tabs close, preserving open text.
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 const SCOPE = new URL('./', self.location.href).href;
 const CACHE_PREFIX = `plainlet:${SCOPE}:`;
 const CACHE_NAME = `${CACHE_PREFIX}${VERSION}`;
 const FILES = [
-  './', './index.html', './styles.css', './app.js', './text-buffer.js',
+  './', './index.html', './styles.css', './app.js', './text-buffer.js', './paste-history.js',
   './sw-register.js', './manifest.webmanifest', './icons/icon.svg',
   './icons/icon-192.png', './icons/icon-512.png',
   './icons/icon-maskable-512.png', './icons/apple-touch-icon.png',

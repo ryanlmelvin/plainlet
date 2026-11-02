@@ -1,4 +1,4 @@
-/** An in-memory buffer. A future history feature can observe changes here. */
+/** The current editor buffer stays in memory, independent of saved pastes. */
 export function createTextBuffer(initialText = '') {
   if (typeof initialText !== 'string') {
     throw new TypeError('The text buffer accepts strings only.');

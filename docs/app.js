@@ -1,4 +1,5 @@
 import { createTextBuffer } from './text-buffer.js';
+import { createPasteHistory } from './paste-history.js';
 
 const input = document.querySelector('#text-input');
 const pasteButton = document.querySelector('#paste-button');
@@ -6,10 +7,21 @@ const clearButton = document.querySelector('#clear-button');
 const copyButton = document.querySelector('#copy-button');
 const status = document.querySelector('#status');
 const buffer = createTextBuffer(input.value);
+const pasteHistory = createPasteHistory();
+const historyButton = document.querySelector('#history-button');
+const historyDialog = document.querySelector('#history-dialog');
+const historyList = document.querySelector('#history-list');
+const historyEmpty = document.querySelector('#history-empty');
+const historyStatus = document.querySelector('#history-status');
+const clearHistoryButton = document.querySelector('#clear-history-button');
+const closeHistoryButton = document.querySelector('#close-history-button');
 
 let activePaste = null;
 let copyPending = false;
 let interaction = 0;
+let historyCopyRequest = null;
+
+const historyStorageError = 'History could not be saved on this device. Changes will last only while this page is open.';
 
 function announce(message) {
   status.textContent = message;
@@ -44,6 +56,17 @@ input.addEventListener('input', () => {
   announce('');
 });
 
+// Record the pasted text, without capturing each edit or replacing native paste behavior.
+input.addEventListener('paste', (event) => {
+  const text = event.clipboardData?.getData('text/plain');
+  if (!text?.trim()) return;
+  // Run after the browser's default insertion and input event, so its status
+  // reset cannot erase a storage failure message.
+  setTimeout(() => {
+    if (!event.defaultPrevented && !pasteHistory.add(text)) announce(historyStorageError);
+  }, 0);
+});
+
 pasteButton.addEventListener('click', async () => {
   const request = Symbol('paste');
   activePaste = request;
@@ -63,9 +86,10 @@ pasteButton.addEventListener('click', async () => {
     }
 
     buffer.setText(text);
+    const saved = pasteHistory.add(text);
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
-    announce('Pasted as plain text.');
+    announce(saved ? 'Pasted as plain text.' : `Pasted as plain text. ${historyStorageError}`);
   } catch {
     if (activePaste !== request) return;
     input.focus();
@@ -86,12 +110,27 @@ clearButton.addEventListener('click', () => {
   announce('Text cleared.');
 });
 
+function selectText(target) {
+  target.focus();
+  if (target === input) {
+    input.select();
+  } else {
+    const range = document.createRange();
+    range.selectNodeContents(target);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+}
+
 /** Keep the fallback clipboard payload plain text, just like writeText(). */
-function copyWithSelection(text) {
+function copyWithSelection(text, target = input) {
   const previousFocus = document.activeElement;
   const selectionStart = input.selectionStart;
   const selectionEnd = input.selectionEnd;
   const selectionDirection = input.selectionDirection;
+  const selection = window.getSelection();
+  const previousRanges = Array.from({ length: selection.rangeCount }, (_, index) => selection.getRangeAt(index).cloneRange());
   let wrotePlainText = false;
 
   function onCopy(event) {
@@ -101,8 +140,7 @@ function copyWithSelection(text) {
     wrotePlainText = true;
   }
 
-  input.focus();
-  input.select();
+  selectText(target);
   document.addEventListener('copy', onCopy, { capture: true });
 
   let copied = false;
@@ -115,6 +153,8 @@ function copyWithSelection(text) {
   }
 
   if (copied) {
+    selection.removeAllRanges();
+    for (const range of previousRanges) selection.addRange(range);
     input.setSelectionRange(selectionStart, selectionEnd, selectionDirection);
     previousFocus?.focus();
   }
@@ -156,6 +196,114 @@ copyButton.addEventListener('click', async () => {
   }
 });
 
+function historyIconButton(action, path) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'button button-clear icon-button';
+  button.dataset.action = action;
+  button.setAttribute('aria-label', `${action} paste`);
+  button.title = `${action} paste`;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  const shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  shape.setAttribute('d', path);
+  svg.append(shape);
+  button.append(svg);
+  return button;
+}
+
+function renderHistory() {
+  if (!historyDialog.open) return;
+  const entries = pasteHistory.getEntries();
+  const focused = document.activeElement;
+  const focusedEntry = focused?.closest('.history-entry');
+  const focusedIndex = Array.from(historyList.children).indexOf(focusedEntry);
+  const fragment = document.createDocumentFragment();
+  for (const entry of entries) {
+    const row = document.createElement('li');
+    row.className = 'history-entry';
+    row.dataset.id = entry.id;
+    const text = document.createElement('pre');
+    text.className = 'history-text';
+    text.tabIndex = 0;
+    text.textContent = entry.text;
+    const actions = document.createElement('div');
+    actions.className = 'history-actions';
+    const copy = historyIconButton('Copy', 'M8 8h12v12H8zM15 8V4H4v11h4');
+    const remove = historyIconButton('Delete', 'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7');
+    copy.addEventListener('click', () => copyHistoryEntry(entry.text, text, copy));
+    remove.addEventListener('click', () => {
+      historyCopyRequest = null;
+      const saved = pasteHistory.remove(entry.id);
+      historyStatus.textContent = saved ? 'Paste deleted.' : historyStorageError;
+    });
+    actions.append(copy, remove);
+    row.append(text, actions);
+    fragment.append(row);
+  }
+  historyList.replaceChildren(fragment);
+  historyList.hidden = entries.length === 0;
+  historyEmpty.hidden = entries.length !== 0;
+  clearHistoryButton.disabled = entries.length === 0;
+  if (focusedEntry) {
+    const rows = Array.from(historyList.children);
+    const nextRow = rows.find((row) => row.dataset.id === focusedEntry.dataset.id) || rows[Math.min(focusedIndex, rows.length - 1)];
+    const nextFocus = focused.dataset.action
+      ? nextRow?.querySelector(`[data-action="${focused.dataset.action}"]`)
+      : nextRow?.querySelector('.history-text');
+    (nextFocus || closeHistoryButton).focus();
+  } else if (focused === clearHistoryButton && clearHistoryButton.disabled) {
+    closeHistoryButton.focus();
+  }
+}
+
+async function copyHistoryEntry(text, preview, button) {
+  const request = Symbol('history-copy');
+  historyCopyRequest = request;
+  const isCurrent = () => historyCopyRequest === request && historyDialog.open && preview.isConnected;
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
+  historyStatus.textContent = 'Copying…';
+  let copied = false;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      copied = true;
+    } else {
+      copied = copyWithSelection(text, preview);
+    }
+  } catch {
+    if (isCurrent()) copied = copyWithSelection(text, preview);
+  } finally {
+    button.disabled = false;
+    button.setAttribute('aria-busy', 'false');
+  }
+  if (!isCurrent()) return;
+  if (copied) {
+    historyStatus.textContent = 'Plain text copied.';
+  } else {
+    selectText(preview);
+    historyStatus.textContent = 'Copy access is unavailable. Text selected: press Ctrl+C or ⌘C, or touch and hold, then choose Copy.';
+  }
+}
+
+pasteHistory.subscribe(renderHistory);
+historyButton.addEventListener('click', () => {
+  // A pending editor copy must not select text behind the modal if it fails.
+  interaction += 1;
+  historyStatus.textContent = pasteHistory.isPersistent() ? '' : historyStorageError;
+  historyDialog.showModal();
+  renderHistory();
+});
+closeHistoryButton.addEventListener('click', () => historyDialog.close());
+historyDialog.addEventListener('close', () => { historyCopyRequest = null; });
+clearHistoryButton.addEventListener('click', () => {
+  historyCopyRequest = null;
+  const saved = pasteHistory.clear();
+  historyStatus.textContent = saved ? 'History cleared.' : historyStorageError;
+});
+
 const aboutMenu = document.querySelector('.about-menu');
 document.addEventListener('click', (event) => {
   if (!aboutMenu.contains(event.target)) aboutMenu.open = false;
@@ -165,4 +313,22 @@ document.addEventListener('keydown', (event) => {
     aboutMenu.open = false;
     aboutMenu.querySelector('summary').focus();
   }
+});
+
+const installDialog = document.querySelector('#install-dialog');
+document.querySelector('#install-button').addEventListener('click', () => {
+  installDialog.showModal();
+});
+installDialog.addEventListener('close', () => {
+  aboutMenu.open = true;
+  document.querySelector('#install-button').focus();
+});
+
+const privacyDialog = document.querySelector('#privacy-dialog');
+document.querySelector('#privacy-button').addEventListener('click', () => {
+  privacyDialog.showModal();
+});
+privacyDialog.addEventListener('close', () => {
+  aboutMenu.open = true;
+  document.querySelector('#privacy-button').focus();
 });

@@ -4,23 +4,26 @@ A little space for plain text. Paste it in. Copy it clean.
 
 **[Open Plainlet](https://ryanlmelvin.github.io/plainlet/)**
 
-Plainlet is a small, installable web app with exactly three buttons:
+Plainlet is a small, installable web app:
 
 - **Paste** reads plain text from your device clipboard and replaces the current buffer. If there is no text, the existing buffer stays intact.
 - **Clear text** empties the buffer.
 - **Copy** writes the buffer to the clipboard as plain text.
+- **History**, at the bottom, shows past pastes with a copy icon and a trash icon for each entry. **Clear history** removes all entries without changing the current buffer.
 
 You can also type, edit, or paste directly into the text area. Rich-text styling is discarded; words, spacing, line breaks, emoji, and literal markup remain. This is a formatting remover, not an HTML-to-text converter or Markdown parser.
 
 ## Install and use offline
 
-Open the app online once and wait for **Ready to work offline**. Install it through your browser's installation menu, or use **Share → Add to Home Screen** in Safari on iPhone/iPad. Installation availability depends on the browser. There is deliberately no fourth install button.
+Open the app online once to cache its files for offline use. The Plainlet menu includes installation instructions. Installation availability depends on the browser.
 
 Clipboard buttons require HTTPS (or localhost) and may request browser permission. If access is blocked, focus the text area and use your device's normal Paste or Copy action. The app provides instructions when this happens.
 
 ## Privacy and storage
 
-Text stays in the current page's memory. There are no uploads, analytics, accounts, saved drafts, or text history. Reloading starts with an empty buffer. Like other sites, a browser may keep a page alive when you navigate away and return.
+Text stays on your device. There are no uploads, analytics, accounts, or saved drafts. Reloading starts with an empty buffer. Successful pastes through the Paste button or directly into the text area are saved in this browser's local storage, newest first. Exact duplicates move to the top; empty or whitespace-only pastes and ordinary typing are not saved. You can copy or delete individual entries, or clear all history. Like other sites, a browser may keep a page alive when you navigate away and return.
+
+History stays on this browser and device until you delete it or clear the site's browser data. If local storage is blocked or full, the app reports it and keeps history changes only for the current page session.
 
 The service worker caches only the app's static files for offline use. It does not cache clipboard content. Your browser/operating system still controls the system clipboard and any clipboard history it provides. GitHub Pages receives ordinary requests for app files, never the buffer's contents.
 
@@ -49,9 +52,9 @@ Publish the `docs/` directory on `main` using **Settings → Pages → Deploy fr
 
 When changing any app file, increment `VERSION` in `docs/sw.js` so the next release gets a fresh offline cache. A new service worker activates after existing app tabs/windows close; it never forcibly reloads a page containing text. Reopen the app online to receive updates.
 
-## Future history
+## History storage
 
-`docs/text-buffer.js` owns an in-memory buffer with change subscriptions, independent of the interface and clipboard access. A future, explicitly enabled history store can subscribe to buffer changes without redesigning the app. No history storage or history interface is implemented now. Keep future user-data storage separate from the service worker's app-file cache.
+`docs/text-buffer.js` owns the in-memory editor buffer. `docs/paste-history.js` stores paste history separately in local storage, under a key scoped to the app's path. It synchronizes history changes between open tabs. History is never placed in the service worker's app-file cache.
 
 ## License
 
