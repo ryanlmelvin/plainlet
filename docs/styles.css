@@ -48,7 +48,7 @@ footer{display:flex;justify-content:space-between;gap:14px;color:var(--muted);fo
 @media(prefers-reduced-motion:reduce){.button{transition:none}}
 
 /* The workspace fills the available screen; only actions and feedback surround it. */
-.app-shell{width:100%;height:100dvh;min-height:320px;margin:0;padding: max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+.app-shell{width:100%;height:100dvh;min-height:320px;margin:0;gap:10px;padding: max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
 main{display:flex;flex-direction:column;min-height:0;padding:0;gap:10px}
 .subtitle{flex:none;font-size:13px;line-height:1.5;margin:0;padding:0 4px}
 .editor{display:flex;flex-direction:column;flex:1;min-height:0;border-radius:12px}
@@ -56,11 +56,12 @@ textarea{flex:1;width:100%;height:auto;min-height:0;margin:0;padding:18px;resize
 .toolbar{flex:none;padding:12px;gap:8px}
 .status{flex:none;min-height:0;margin:0 4px;font-size:12px}
 .status:empty{display:none}
-/* Lift the mobile workspace slightly while keeping controls clear of iPhone screen edges. */
-@media(max-width:600px){.app-shell{width:100%;padding:max(4px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))}.toolbar{padding:10px;gap:4px}.toolbar .button{padding-inline:8px}.subtitle{font-size:12px}textarea{padding:14px}}
-@media(max-width:360px){.toolbar{gap:2px;padding:8px 6px}.toolbar .button{padding-inline:6px;min-width:44px;white-space:nowrap}.toolbar .button svg{display:none}}
+/* Compact the spacing, keeping the full-size touch targets and safe screen edges. */
+@media(max-width:600px){.app-shell{width:100%;gap:6px;padding:max(4px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))}main{gap:6px}.site-header{gap:6px}.toolbar{padding:6px 10px;gap:4px}.toolbar .button{padding-inline:8px}.subtitle{font-size:12px}textarea{padding:12px}}
+@media(max-width:360px){.toolbar{gap:2px;padding:6px}.toolbar .button{padding-inline:6px;min-width:44px;white-space:nowrap}.toolbar .button svg{display:none}}
+/* The Home Screen status-bar blur can extend below the reported safe area. */
+@media(max-width:600px) and (display-mode:standalone) and (orientation:portrait){.app-shell{padding-top:calc(env(safe-area-inset-top) + 24px)}}
 
-.app-shell{gap:10px}
 .site-header{flex:none;flex-wrap:wrap}
 #update-notice{display:flex;align-items:center;gap:8px;margin-left:auto;max-width:100%}
 #update-notice[hidden]{display:none}
