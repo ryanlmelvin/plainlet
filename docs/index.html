@@ -37,13 +37,13 @@
           <div class="toolbar">
             <button type="button" id="paste-button" class="button button-paste"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5H6a2 2 0 0 0-2 2v13h16V7a2 2 0 0 0-2-2h-3M9 3h6v4H9zM8 12h8M8 16h5"/></svg>Paste</button>
             <button type="button" id="clear-button" class="button button-clear" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg>Clear text</button>
+            <button type="button" id="history-button" class="button button-clear" aria-haspopup="dialog" aria-controls="history-dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.6 7M3 4v7h7M12 7v5l3 2"/></svg>History</button>
             <button type="button" id="copy-button" class="button button-copy" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M15 8V4H4v11h4"/></svg>Copy</button>
           </div>
         </section>
         <p id="status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
         <noscript><p class="noscript">Enable JavaScript to use Paste, Clear text, and Copy.</p></noscript>
       </main>
-      <button type="button" id="history-button" class="button button-clear" aria-haspopup="dialog" aria-controls="history-dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.6 7M3 4v7h7M12 7v5l3 2"/></svg>History</button>
       <span id="offline-status" hidden></span>
     </div>
     <dialog id="history-dialog" aria-labelledby="history-title">
