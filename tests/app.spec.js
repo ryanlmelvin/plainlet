@@ -61,7 +61,7 @@ test('paste and copy preserve Unicode, literal HTML, spacing, and newlines', asy
   await expect(page.getByRole('textbox')).toHaveValue(text);
   await expect(page.getByRole('status')).toHaveText('Pasted as plain text.');
   await page.getByRole('button', { name: 'Copy', exact: true }).click();
-  await expect(page.getByRole('status')).toHaveText('Plain text copied.');
+  await expect(page.locator('#status')).toHaveAttribute('data-quiet', '');
   expect(await page.evaluate(() => window.testClipboard.written)).toEqual([{ type: 'text/plain', text }]);
   await expect(page.locator('textarea b')).toHaveCount(0);
 });
@@ -181,7 +181,8 @@ test('manifest assets resolve under the GitHub Pages subpath and work offline', 
   await page.getByRole('button', { name: 'Paste', exact: true }).click();
   await expect(page.getByRole('textbox')).toHaveValue('Available offline');
   await page.getByRole('button', { name: 'Copy', exact: true }).click();
-  await expect(page.getByRole('status')).toHaveText('Plain text copied.');
+  await expect(page.locator('#status')).toHaveAttribute('data-quiet', '');
+  expect(await page.evaluate(() => window.testClipboard.written)).toEqual([{ type: 'text/plain', text: 'Available offline' }]);
 });
 
 test('desktop layout has no overflow and produces a review screenshot', async ({ page }, testInfo) => {
@@ -208,8 +209,33 @@ test('mobile layout keeps the editor and history controls usable without horizon
     expect(bounds.x + bounds.width).toBeLessThanOrEqual(375);
   }
   await page.getByRole('textbox').fill('A little plain text.');
-  await page.getByRole('button', { name: 'Copy', exact: true }).tap();
-  await expect(page.getByRole('status')).toHaveText('Plain text copied.');
+  const editor = page.locator('.editor');
+  const copy = page.getByRole('button', { name: 'Copy', exact: true });
+  const editorBounds = await editor.boundingBox();
+  const copyBounds = await copy.boundingBox();
+  await copy.tap();
+  await expect(copy).toHaveAttribute('aria-busy', 'false');
+  await expect(page.locator('#status')).toHaveAttribute('data-quiet', '');
+  expect(await page.evaluate(() => window.testClipboard.written)).toEqual([{ type: 'text/plain', text: 'A little plain text.' }]);
+  expect(await editor.boundingBox()).toEqual(editorBounds);
+  await expect.poll(() => copy.boundingBox()).toEqual(copyBounds);
+  await page.evaluate(() => { window.testClipboard.text = 'Pasted text stays the same size.'; });
+  await page.getByRole('button', { name: 'Paste', exact: true }).tap();
+  await expect(page.getByRole('textbox')).toHaveValue('Pasted text stays the same size.');
+  await expect(page.locator('#status')).toHaveAttribute('data-quiet', '');
+  const pastedEditorBounds = await editor.boundingBox();
+  const pastedCopyBounds = await copy.boundingBox();
+  expect(pastedEditorBounds).toEqual(editorBounds);
+  expect(pastedCopyBounds).toEqual(copyBounds);
+  await copy.tap();
+  await expect(copy).toHaveAttribute('aria-busy', 'false');
+  await expect(page.locator('#status')).toHaveAttribute('data-quiet', '');
+  expect(await editor.boundingBox()).toEqual(pastedEditorBounds);
+  await expect.poll(() => copy.boundingBox()).toEqual(pastedCopyBounds);
+  expect(await page.evaluate(() => window.testClipboard.written)).toEqual([
+    { type: 'text/plain', text: 'A little plain text.' },
+    { type: 'text/plain', text: 'Pasted text stays the same size.' },
+  ]);
   await page.screenshot({ path: testInfo.outputPath('mobile.png'), fullPage: true });
   await context.close();
 });
@@ -301,7 +327,7 @@ test('history copies the exact past paste without replacing the current editor t
   const history = await openHistory(page);
   await history.getByRole('listitem').getByRole('button', { name: 'Copy paste', exact: true }).click();
   expect(await page.evaluate(() => window.testClipboard.written)).toEqual([{ type: 'text/plain', text: saved }]);
-  await expect(history.getByRole('status')).toContainText('copied');
+  await expect(history.locator('#history-status')).toHaveAttribute('data-quiet', '');
   await expect(page.locator('#text-input')).toHaveValue('Keep editing this');
   await expect(history.getByRole('listitem')).toHaveCount(1);
 });

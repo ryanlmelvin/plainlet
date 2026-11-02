@@ -61,11 +61,17 @@ function flashCopyFeedback(button) {
   copyFeedbackTimers.set(button, setTimeout(() => {
     button.classList.remove('copy-feedback');
     copyFeedbackTimers.delete(button);
-  }, 650));
+  }, 150));
 }
 
-function announce(message) {
-  status.textContent = message;
+function setStatus(target, message, quiet = false) {
+  // Routine feedback remains available to screen readers without moving the UI.
+  target.toggleAttribute('data-quiet', quiet);
+  target.textContent = message;
+}
+
+function announce(message, needsAttention = false) {
+  setStatus(status, message, !needsAttention);
 }
 
 function updateButtons() {
@@ -108,7 +114,7 @@ input.addEventListener('paste', (event) => {
   // Run after the browser's default insertion and input event, so its status
   // reset cannot erase a storage failure message.
   setTimeout(() => {
-    if (!event.defaultPrevented && !pasteHistory.add(text)) announce(historyStorageError);
+    if (!event.defaultPrevented && !pasteHistory.add(text)) announce(historyStorageError, true);
   }, 0);
 });
 
@@ -126,7 +132,7 @@ pasteButton.addEventListener('click', async () => {
     if (activePaste !== request) return;
 
     if (text.length === 0) {
-      announce('No text found on the clipboard. Your text is unchanged.');
+      announce('No text found on the clipboard. Your text is unchanged.', true);
       return;
     }
 
@@ -134,11 +140,11 @@ pasteButton.addEventListener('click', async () => {
     const saved = pasteHistory.add(text);
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
-    announce(saved ? 'Pasted as plain text.' : `Pasted as plain text. ${historyStorageError}`);
+    announce(saved ? 'Pasted as plain text.' : `Pasted as plain text. ${historyStorageError}`, !saved);
   } catch {
     if (activePaste !== request) return;
     input.focus();
-    announce('Clipboard access is unavailable. Paste in the text box with Ctrl+V or ⌘V, or touch and hold, then choose Paste.');
+    announce('Clipboard access is unavailable. Paste in the text box with Ctrl+V or ⌘V, or touch and hold, then choose Paste.', true);
   } finally {
     if (activePaste === request) {
       activePaste = null;
@@ -238,7 +244,7 @@ copyButton.addEventListener('click', async () => {
   } else {
     input.focus();
     input.select();
-    announce('Copy access is unavailable. Text selected: press Ctrl+C or ⌘C, or touch and hold, then choose Copy.');
+    announce('Copy access is unavailable. Text selected: press Ctrl+C or ⌘C, or touch and hold, then choose Copy.', true);
   }
 });
 
@@ -260,7 +266,7 @@ shareButton.addEventListener('click', async () => {
     sharePassword.value = '';
     passwordControls.hidden = true;
     shareAccess.textContent = 'Anyone with this link can read this snapshot of your text.';
-    shareStatus.textContent = '';
+    setStatus(shareStatus, '');
     updateShareControls();
     interaction += 1;
     shareDialog.showModal();
@@ -269,7 +275,7 @@ shareButton.addEventListener('click', async () => {
     if (startedAt !== interaction) return;
     announce(error.code === 'too-large' ? 'This paste is too big to share.'
       : error.code === 'unsupported' ? 'Sharing is unavailable in this browser. You can still copy your text.'
-        : 'The share link could not be created. Try again.');
+        : 'The share link could not be created. Try again.', true);
   } finally {
     sharePending = false;
     updateButtons();
@@ -299,12 +305,12 @@ function queueProtectedLink(delay = 250) {
   shareLink.value = '';
   updateShareControls();
   if (!sharePassword.value) {
-    shareStatus.textContent = '';
+    setStatus(shareStatus, '');
     return;
   }
   const request = { text: shareSnapshot, password: sharePassword.value };
   protectionRequest = request;
-  shareStatus.textContent = 'Protecting link…';
+  setStatus(shareStatus, 'Protecting link…');
   protectionTimer = setTimeout(() => {
     pendingProtection = request;
     buildProtectedLink();
@@ -323,13 +329,13 @@ async function buildProtectedLink() {
     const link = await createShareLink(request.text, location.href, { password: request.password });
     if (!isCurrent()) return;
     shareLink.value = link;
-    shareStatus.textContent = lastCopiedShareLink ? 'Link changed. Copy the new link.' : '';
+    setStatus(shareStatus, lastCopiedShareLink ? 'Link changed. Copy the new link.' : '');
   } catch (error) {
     if (!isCurrent()) return;
-    shareStatus.textContent = error.code === 'too-large' ? 'This paste is too big to share.'
+    setStatus(shareStatus, error.code === 'too-large' ? 'This paste is too big to share.'
       : error.code === 'password-too-long' ? 'This password is too long. Use a shorter password.'
         : error.code === 'unsupported' ? 'Password protection is unavailable in this browser.'
-          : 'The protected link could not be created. Edit the password to try again.';
+          : 'The protected link could not be created. Edit the password to try again.');
   } finally {
     protectionRunning = false;
     updateShareControls();
@@ -342,8 +348,8 @@ shareProtect.addEventListener('change', () => {
   sharePassword.value = '';
   shareLink.value = shareProtect.checked ? '' : plainShareLink;
   passwordControls.hidden = !shareProtect.checked;
-  shareStatus.textContent = !shareProtect.checked && lastCopiedShareLink && lastCopiedShareLink !== plainShareLink
-    ? 'Link changed. Copy the new link.' : '';
+  setStatus(shareStatus, !shareProtect.checked && lastCopiedShareLink && lastCopiedShareLink !== plainShareLink
+    ? 'Link changed. Copy the new link.' : '');
   shareAccess.textContent = shareProtect.checked
     ? 'The password is required to read this snapshot of your text.'
     : 'Anyone with this link can read this snapshot of your text.';
@@ -360,7 +366,7 @@ generatePasswordButton.addEventListener('click', () => {
     shareLink.value = '';
     sharePassword.value = '';
     updateShareControls();
-    shareStatus.textContent = 'Password generation is unavailable in this browser.';
+    setStatus(shareStatus, 'Password generation is unavailable in this browser.');
   }
 });
 
@@ -374,7 +380,7 @@ async function copyShareField(field, button, label) {
   const isCurrent = () => shareCopyRequest === request && shareDialog.open && field.value === text;
   updateShareControls();
   button.setAttribute('aria-busy', 'true');
-  shareStatus.textContent = 'Copying…';
+  setStatus(shareStatus, 'Copying…', true);
   let copied = false;
   try {
     if (navigator.clipboard?.writeText) {
@@ -396,10 +402,10 @@ async function copyShareField(field, button, label) {
     if (field === shareLink) lastCopiedShareLink = text;
     const reminder = field === sharePassword && lastCopiedShareLink && lastCopiedShareLink !== shareLink.value
       ? ' Copy the updated link too.' : '';
-    shareStatus.textContent = `${label} copied.${reminder}`;
+    setStatus(shareStatus, reminder ? reminder.trimStart() : `${label} copied.`, !reminder);
   } else {
     selectText(field);
-    shareStatus.textContent = `Copy access is unavailable. ${label} selected: press Ctrl+C or ⌘C, or touch and hold, then choose Copy.`;
+    setStatus(shareStatus, `Copy access is unavailable. ${label} selected: press Ctrl+C or ⌘C, or touch and hold, then choose Copy.`);
   }
 }
 
@@ -415,7 +421,7 @@ shareDialog.addEventListener('close', () => {
   sharePassword.value = '';
   shareProtect.checked = false;
   passwordControls.hidden = true;
-  shareStatus.textContent = '';
+  setStatus(shareStatus, '');
   updateShareControls();
   shareButton.focus();
 });
@@ -516,7 +522,7 @@ async function openSharedText() {
       openDialog(unlockDialog);
     } else {
       announce(error.code === 'unsupported' ? 'This browser cannot open this share link. Try a newer browser.'
-        : 'This share link is invalid or incomplete. Your text is unchanged.');
+        : 'This share link is invalid or incomplete. Your text is unchanged.', true);
     }
   } finally {
     if (activeShareLoad === request && unlockRequest?.request !== request) {
@@ -587,7 +593,7 @@ function renderHistory() {
     remove.addEventListener('click', () => {
       historyCopyRequest = null;
       const saved = pasteHistory.remove(entry.id);
-      historyStatus.textContent = saved ? 'Paste deleted.' : historyStorageError;
+      setStatus(historyStatus, saved ? 'Paste deleted.' : historyStorageError, saved);
     });
     actions.append(copy, remove);
     row.append(text, actions);
@@ -621,7 +627,7 @@ async function copyHistoryEntry(text, preview, button) {
   const isCurrent = () => historyCopyRequest === request && historyDialog.open && preview.isConnected;
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
-  historyStatus.textContent = 'Copying…';
+  setStatus(historyStatus, 'Copying…', true);
   let copied = false;
   try {
     if (navigator.clipboard?.writeText) {
@@ -638,10 +644,10 @@ async function copyHistoryEntry(text, preview, button) {
   }
   if (!isCurrent()) return;
   if (copied) {
-    historyStatus.textContent = 'Plain text copied.';
+    setStatus(historyStatus, 'Plain text copied.', true);
   } else {
     selectText(preview);
-    historyStatus.textContent = 'Copy access is unavailable. Text selected: press Ctrl+C or ⌘C, or touch and hold, then choose Copy.';
+    setStatus(historyStatus, 'Copy access is unavailable. Text selected: press Ctrl+C or ⌘C, or touch and hold, then choose Copy.');
   }
 }
 
@@ -656,7 +662,7 @@ function openDialog(dialog) {
 
 historyButton.addEventListener('click', () => {
   // A pending editor copy must not select text behind the modal if it fails.
-  historyStatus.textContent = pasteHistory.isPersistent() ? '' : historyStorageError;
+  setStatus(historyStatus, pasteHistory.isPersistent() ? '' : historyStorageError);
   openDialog(historyDialog);
   renderHistory();
 });
@@ -665,7 +671,7 @@ historyDialog.addEventListener('close', () => { historyCopyRequest = null; });
 clearHistoryButton.addEventListener('click', () => {
   historyCopyRequest = null;
   const saved = pasteHistory.clear();
-  historyStatus.textContent = saved ? 'History cleared.' : historyStorageError;
+  setStatus(historyStatus, saved ? 'History cleared.' : historyStorageError, saved);
 });
 
 const aboutMenu = document.querySelector('.about-menu');

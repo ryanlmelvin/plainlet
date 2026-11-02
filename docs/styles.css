@@ -125,4 +125,7 @@ textarea{flex:1;width:100%;height:auto;min-height:0;margin:0;padding:18px;resize
 @media(max-width:400px){.share-password-row{flex-wrap:wrap}#share-password{flex-basis:100%}#generate-password-button{margin-right:auto}}
 
 /* Keep click feedback visible after release and while clipboard access is pending. */
+.button-copy,#copy-share-button,#copy-password-button,.history-actions [data-action="Copy"]{transition:none}
 .button.copy-feedback,.button.copy-feedback:hover:not(:disabled){background:#14271b;color:#f4f5ef;opacity:1;transition:none}
+/* Announce routine feedback without a visible message or a change in layout. */
+.status[data-quiet]{position:absolute;width:1px;height:1px;min-height:0;margin:0!important;padding:0!important;border:0!important;overflow:hidden;clip-path:inset(50%);white-space:nowrap}

@@ -91,7 +91,7 @@ test('sharing is available for nonempty text and copies a link without changing 
   await expect(dialog.locator('#share-password')).not.toBeVisible();
   await dialog.getByRole('button', { name: 'Copy link', exact: true }).click();
   expect(await page.evaluate(() => window.testClipboard.written)).toEqual([link]);
-  await expect(page.locator('#share-status')).toContainText(/copied/i);
+  await expect(page.locator('#share-status')).toHaveAttribute('data-quiet', '');
   await closeShare(page);
   await expect(share).toBeFocused();
   await expect(page.getByRole('textbox', { name: 'Your plain text' })).toHaveValue(text);
@@ -392,7 +392,7 @@ test('password-protected sharing copies the password separately and opens only a
   expect(link).not.toContain(password);
   await expect(page.getByRole('dialog', { name: 'Share', exact: true })).toContainText(/send .* separately/i);
   await page.getByRole('button', { name: 'Copy password', exact: true }).click();
-  await expect(page.locator('#share-status')).toContainText(/password copied/i);
+  await expect(page.locator('#share-status')).toHaveAttribute('data-quiet', '');
   await page.getByRole('button', { name: 'Copy link', exact: true }).click();
   expect(await page.evaluate(() => window.testClipboard.written)).toEqual([password, link]);
   expect(await page.evaluate(() => ({ local: localStorage.length, session: sessionStorage.length }))).toEqual({ local: 0, session: 0 });
@@ -636,7 +636,7 @@ test('changing an already-copied password link reminds the sender to copy the up
   await page.getByRole('button', { name: 'Copy password', exact: true }).click();
   await expect(page.locator('#share-status')).toContainText('Copy the updated link too.');
   await page.getByRole('button', { name: 'Copy link', exact: true }).click();
-  await expect(page.locator('#share-status')).toHaveText('Share link copied.');
+  await expect(page.locator('#share-status')).toHaveAttribute('data-quiet', '');
   expect(await page.evaluate(() => window.testClipboard.written)).toEqual([original.link, chosen, updated]);
 
   const recipient = await context.newPage();
