@@ -38,7 +38,7 @@ async function mockClipboard(page, options = {}) {
 test('has exactly three controls with useful empty-state behavior', async ({ page }) => {
   await mockClipboard(page);
   await page.goto('./');
-  await expect(page.getByRole('button')).toHaveCount(3);
+  await expect(page.locator('.toolbar').getByRole('button')).toHaveCount(3);
   await expect(page.getByRole('button', { name: 'Paste', exact: true })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Clear text' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Copy', exact: true })).toBeDisabled();

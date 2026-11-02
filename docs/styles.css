@@ -56,3 +56,14 @@ textarea{flex:1;width:100%;height:auto;min-height:0;margin:0;padding:18px;resize
 .status{flex:none;min-height:0;margin:0 4px;font-size:12px}
 .status:empty{display:none}
 @media(max-width:600px){.app-shell{width:100%;padding:10px}.toolbar{padding:10px}.subtitle{font-size:12px}textarea{padding:14px}}
+
+.app-shell{gap:10px}
+.site-header{flex:none}
+.about-menu{position:relative}
+.about-menu summary{cursor:pointer;list-style:none;min-height:44px;width:fit-content;padding:4px;border-radius:8px}
+.about-menu summary::-webkit-details-marker{display:none}
+.about-menu summary:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.about-panel{position:absolute;z-index:2;top:calc(100% + 6px);left:0;width:max-content;max-width:calc(100vw - 28px);padding:18px 20px;background:var(--paper);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 28px #0002;font-size:14px;line-height:1.6}
+.about-panel h2{font-size:15px;margin:0 0 10px}
+.about-panel p{margin:6px 0}
+.about-panel a{color:inherit;text-underline-offset:3px}
