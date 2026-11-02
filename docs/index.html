@@ -23,6 +23,7 @@
           <div class="about-panel">
             <button type="button" id="install-button" class="button button-clear">Install on device</button>
             <button type="button" id="privacy-button" class="button button-clear">Privacy</button>
+            <button type="button" id="share-help-button" class="button button-clear">Share?</button>
             <h2>About Plainlet</h2>
             <p>Developed by <a href="https://ryanlmelvin.com">Ryan L. Melvin</a>.</p>
             <p>Licensed under the <a href="https://github.com/ryanlmelvin/plainlet/blob/main/LICENSE">MIT license</a>.</p>
@@ -32,6 +33,7 @@
           <span id="update-status" role="status" aria-live="polite" aria-atomic="true"></span>
           <button type="button" id="update-button" class="button button-paste">Update now</button>
         </div>
+        <button type="button" id="share-button" class="button button-clear" aria-haspopup="dialog" aria-controls="share-dialog" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M5 13v7h14v-7"/></svg>Share</button>
       </header>
       <main>
         <p class="subtitle" id="text-help">Paste in any text. Formatting automatically removed. Copy out plain text.</p>
@@ -60,11 +62,30 @@
       <ul id="history-list" aria-label="Past pastes" hidden></ul>
       <p id="history-status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
     </dialog>
+    <dialog id="share-dialog" aria-labelledby="share-title">
+      <h2 id="share-title">Share</h2>
+      <p>Anyone with this link can read this snapshot of your text.</p>
+      <input id="share-link" type="text" aria-label="Share link" readonly spellcheck="false" autocomplete="off">
+      <p id="share-status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+      <form method="dialog" class="share-actions">
+        <button class="button button-clear">Close</button>
+        <button type="button" id="copy-share-button" class="button button-paste" autofocus>Copy link</button>
+      </form>
+    </dialog>
+    <dialog id="share-help-dialog" aria-labelledby="share-help-title">
+      <h2 id="share-help-title">Share?</h2>
+      <p>Choose Share, then Copy link to send a snapshot of your text. Opening it loads the text into Plainlet. Later edits won’t change a link you already shared.</p>
+      <p>The text is compressed and encrypted with AES-256-GCM inside the link. The key is in the link too, so anyone with the full link can read it. Plainlet does not upload your text.</p>
+      <p>Links do not expire and cannot be revoked. They may be saved in browser history or by the app you send them through.</p>
+      <p>Links are limited to 8,000 characters and 1 MiB of text before compression. Some apps may shorten or break long links. If a paste is too big to share, you can still paste, edit, and copy it normally.</p>
+      <form method="dialog"><button class="button button-paste">Close</button></form>
+    </dialog>
     <dialog id="privacy-dialog" aria-labelledby="privacy-title">
       <h2 id="privacy-title">Privacy</h2>
       <p>Plainlet is a static site hosted on GitHub Pages. It has no server-side storage for your text.</p>
       <p>Your current text clears when you reload or close the page. Pastes are saved in this browser’s local history until you delete them individually or choose Clear history. Copying puts text on your device’s clipboard.</p>
       <p>Only app files are cached on your device for offline use. Plainlet does not upload your text.</p>
+      <p>Share links contain an encrypted snapshot and its key. Anyone with the full link can read it. Links may be kept in browser history or messaging apps; they cannot be revoked.</p>
       <form method="dialog"><button class="button button-paste">Close</button></form>
     </dialog>
     <dialog id="install-dialog" aria-labelledby="install-title">

@@ -1,12 +1,12 @@
 // Bump VERSION whenever a shipped app file changes. Each release is cached
 // together; new workers wait for Update now or for old app tabs to close.
-const VERSION = '1.4.6';
+const VERSION = '1.5.0';
 const SCOPE = new URL('./', self.location.href).href;
 const CACHE_PREFIX = `plainlet:${SCOPE}:`;
 const CACHE_NAME = `${CACHE_PREFIX}${VERSION}`;
 const FILES = [
   './', './index.html', './styles.css', './app.js', './text-buffer.js', './paste-history.js',
-  './sw-register.js', './manifest.webmanifest', './icons/icon.svg',
+  './sw-register.js', './share-link.js', './manifest.webmanifest', './icons/icon.svg',
   './icons/icon-192.png', './icons/icon-512.png',
   './icons/icon-maskable-512.png', './icons/apple-touch-icon.png',
 ];
@@ -43,6 +43,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   // Cache only this app's known files, never clipboard text or arbitrary URLs.
   url.search = '';
+  url.hash = '';
   if (!APP_URLS.has(url.href)) return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);

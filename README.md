@@ -10,8 +10,19 @@ Plainlet is a small, installable web app:
 - **Clear text** empties the buffer.
 - **Copy** writes the buffer to the clipboard as plain text.
 - **History**, beside Copy on the right, shows past pastes with a copy icon and a trash icon for each entry. **Clear history** removes all entries without changing the current buffer.
+- **Share**, at the top right, creates a link containing a snapshot of the current text. Choose **Copy link** to share it. **Share?** in the Plainlet menu explains how it works.
 
 You can also type, edit, or paste directly into the text area. Rich-text styling is discarded; words, spacing, line breaks, emoji, and literal markup remain. This is a formatting remover, not an HTML-to-text converter or Markdown parser.
+
+## Share a snapshot
+
+Shared text lives entirely in the URL fragment (after `#`), not on a server. Plainlet compresses the text when useful and encrypts it with AES-256-GCM using a new random 256-bit key and 96-bit nonce for each link. The key is included in the fragment: **anyone with the complete link can read the text**. Encryption does not protect against someone who obtains the link, authenticate the sender, or provide a password. AES-256 is a strong symmetric cipher; this feature makes no claim of being “quantum-proof.”
+
+Opening a link loads its snapshot into the editor without adding it to paste history. Plainlet removes the fragment from the current address after reading it, so clearing or reloading does not reopen the snapshot. A later edit does not change an existing share. Links have no expiration or revocation; the browser or the app used to send them may retain a copy.
+
+Sharing is limited to a complete URL of 8,000 characters and 1 MiB of UTF-8 text before compression. Actual capacity depends on the text and site address, and some messaging apps may truncate long URLs. If either limit is exceeded, Plainlet says **“This paste is too big to share.”** These limits apply only to sharing: the editor, Paste, and Copy have no added size limit.
+
+Sharing requires a secure browser context with Web Crypto. Compression uses the browser's Compression Streams API; browsers without it can create uncompressed links, but need decompression support to open compressed ones. Invalid, damaged, or oversized links leave existing text intact. Share links also open offline after the current app has been cached.
 
 ## Install and use offline
 
@@ -29,7 +40,7 @@ Text stays on your device. There are no uploads, analytics, accounts, or automat
 
 History stays on this browser and device until you delete it or clear the site's browser data. If local storage is blocked or full, the app reports it and keeps history changes only for the current page session.
 
-The service worker caches only the app's static files for offline use. It does not cache clipboard content. Your browser/operating system still controls the system clipboard and any clipboard history it provides. GitHub Pages receives ordinary requests for app files, never the buffer's contents.
+The service worker caches only the app's static files for offline use. It does not cache clipboard content or share links. Your browser/operating system still controls the system clipboard and any clipboard history it provides. GitHub Pages receives ordinary requests for app files, never the buffer's contents; URL fragments are not included in HTTP requests.
 
 ## Development
 

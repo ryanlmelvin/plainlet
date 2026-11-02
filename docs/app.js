@@ -1,12 +1,18 @@
 import { createTextBuffer } from './text-buffer.js';
 import { createPasteHistory } from './paste-history.js';
 import { restoreUpdateText, setupUpdates } from './sw-register.js';
+import { createShareLink, readShareLink } from './share-link.js';
 
 const input = document.querySelector('#text-input');
 const pasteButton = document.querySelector('#paste-button');
 const clearButton = document.querySelector('#clear-button');
 const copyButton = document.querySelector('#copy-button');
 const status = document.querySelector('#status');
+const shareButton = document.querySelector('#share-button');
+const shareDialog = document.querySelector('#share-dialog');
+const shareLink = document.querySelector('#share-link');
+const shareStatus = document.querySelector('#share-status');
+const copyShareButton = document.querySelector('#copy-share-button');
 restoreUpdateText(input);
 const buffer = createTextBuffer(input.value);
 const pasteHistory = createPasteHistory();
@@ -22,6 +28,9 @@ let activePaste = null;
 let copyPending = false;
 let interaction = 0;
 let historyCopyRequest = null;
+let sharePending = false;
+let activeShareLoad = null;
+let shareCopyRequest = null;
 
 const historyStorageError = 'History could not be saved on this device. Changes will last only while this page is open.';
 
@@ -32,10 +41,12 @@ function announce(message) {
 function updateButtons() {
   pasteButton.disabled = activePaste !== null;
   // Clear also cancels a pending clipboard read, even when the buffer is empty.
-  clearButton.disabled = buffer.getText().length === 0 && activePaste === null;
+  clearButton.disabled = buffer.getText().length === 0 && activePaste === null && activeShareLoad === null;
   copyButton.disabled = buffer.getText().length === 0 || copyPending;
+  shareButton.disabled = buffer.getText().length === 0 || sharePending || activePaste !== null || activeShareLoad !== null;
   pasteButton.setAttribute('aria-busy', String(activePaste !== null));
   copyButton.setAttribute('aria-busy', String(copyPending));
+  shareButton.setAttribute('aria-busy', String(sharePending));
 }
 
 function render(text) {
@@ -45,6 +56,7 @@ function render(text) {
 
 function cancelPendingPaste() {
   activePaste = null;
+  activeShareLoad = null;
   interaction += 1;
 }
 
@@ -71,6 +83,7 @@ input.addEventListener('paste', (event) => {
 
 pasteButton.addEventListener('click', async () => {
   const request = Symbol('paste');
+  activeShareLoad = null;
   activePaste = request;
   interaction += 1;
   updateButtons();
@@ -114,8 +127,8 @@ clearButton.addEventListener('click', () => {
 
 function selectText(target) {
   target.focus();
-  if (target === input) {
-    input.select();
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+    target.select();
   } else {
     const range = document.createRange();
     range.selectNodeContents(target);
@@ -197,6 +210,105 @@ copyButton.addEventListener('click', async () => {
     announce('Copy access is unavailable. Text selected: press Ctrl+C or ⌘C, or touch and hold, then choose Copy.');
   }
 });
+
+shareButton.addEventListener('click', async () => {
+  const text = buffer.getText();
+  if (!text.length || sharePending) return;
+  const startedAt = interaction;
+  sharePending = true;
+  updateButtons();
+  announce('Creating share link…');
+  try {
+    const link = await createShareLink(text, location.href);
+    if (startedAt !== interaction) return;
+    shareLink.value = link;
+    shareStatus.textContent = '';
+    interaction += 1;
+    shareDialog.showModal();
+    announce('');
+  } catch (error) {
+    if (startedAt !== interaction) return;
+    announce(error.code === 'too-large' ? 'This paste is too big to share.'
+      : error.code === 'unsupported' ? 'Encrypted sharing is unavailable in this browser. You can still copy your text.'
+        : 'The share link could not be created. Try again.');
+  } finally {
+    sharePending = false;
+    updateButtons();
+  }
+});
+
+copyShareButton.addEventListener('click', async () => {
+  const text = shareLink.value;
+  if (!text || shareCopyRequest) return;
+  const request = Symbol('share-copy');
+  shareCopyRequest = request;
+  const isCurrent = () => shareCopyRequest === request && shareDialog.open;
+  copyShareButton.disabled = true;
+  copyShareButton.setAttribute('aria-busy', 'true');
+  shareStatus.textContent = 'Copying…';
+  let copied = false;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      copied = true;
+    } else {
+      copied = copyWithSelection(text, shareLink);
+    }
+  } catch {
+    if (isCurrent()) copied = copyWithSelection(text, shareLink);
+  }
+  if (!isCurrent()) return;
+  shareCopyRequest = null;
+  copyShareButton.disabled = false;
+  copyShareButton.setAttribute('aria-busy', 'false');
+  if (copied) {
+    shareStatus.textContent = 'Share link copied.';
+  } else {
+    selectText(shareLink);
+    shareStatus.textContent = 'Copy access is unavailable. Link selected: press Ctrl+C or ⌘C, or touch and hold, then choose Copy.';
+  }
+});
+
+shareDialog.addEventListener('close', () => {
+  shareCopyRequest = null;
+  shareLink.value = '';
+  shareStatus.textContent = '';
+  copyShareButton.disabled = false;
+  copyShareButton.setAttribute('aria-busy', 'false');
+  shareButton.focus();
+});
+
+async function openSharedText() {
+  const hash = location.hash;
+  if (!hash.startsWith('#share=')) return;
+  cancelPendingPaste();
+  const request = Symbol('share-load');
+  activeShareLoad = request;
+  // Consume the link so Clear/reload cannot restore it and later navigation
+  // does not retain the key. The original link may still exist outside this tab.
+  history.replaceState(history.state, '', location.pathname + location.search);
+  updateButtons();
+  announce('Opening shared text…');
+  try {
+    const text = await readShareLink(hash);
+    if (activeShareLoad !== request) return;
+    buffer.setText(text);
+    if (!document.querySelector('dialog[open]')) {
+      input.focus();
+      input.setSelectionRange(0, 0);
+    }
+    announce('Shared text opened.');
+  } catch (error) {
+    if (activeShareLoad !== request) return;
+    announce(error.code === 'unsupported' ? 'This browser cannot open this encrypted share link. Try a newer browser.'
+      : 'This share link is invalid or incomplete. Your text is unchanged.');
+  } finally {
+    if (activeShareLoad === request) {
+      activeShareLoad = null;
+      updateButtons();
+    }
+  }
+}
 
 function historyIconButton(action, path) {
   const button = document.createElement('button');
@@ -291,11 +403,18 @@ async function copyHistoryEntry(text, preview, button) {
 }
 
 pasteHistory.subscribe(renderHistory);
+function openDialog(dialog) {
+  // Reading help/history must not lose an incoming share or let a pending
+  // outgoing share/copy interrupt the dialog that the user just chose.
+  interaction += 1;
+  if (sharePending) announce('');
+  dialog.showModal();
+}
+
 historyButton.addEventListener('click', () => {
   // A pending editor copy must not select text behind the modal if it fails.
-  interaction += 1;
   historyStatus.textContent = pasteHistory.isPersistent() ? '' : historyStorageError;
-  historyDialog.showModal();
+  openDialog(historyDialog);
   renderHistory();
 });
 closeHistoryButton.addEventListener('click', () => historyDialog.close());
@@ -319,7 +438,7 @@ document.addEventListener('keydown', (event) => {
 
 const installDialog = document.querySelector('#install-dialog');
 document.querySelector('#install-button').addEventListener('click', () => {
-  installDialog.showModal();
+  openDialog(installDialog);
 });
 installDialog.addEventListener('close', () => {
   aboutMenu.open = true;
@@ -328,11 +447,22 @@ installDialog.addEventListener('close', () => {
 
 const privacyDialog = document.querySelector('#privacy-dialog');
 document.querySelector('#privacy-button').addEventListener('click', () => {
-  privacyDialog.showModal();
+  openDialog(privacyDialog);
 });
 privacyDialog.addEventListener('close', () => {
   aboutMenu.open = true;
   document.querySelector('#privacy-button').focus();
 });
 
+const shareHelpDialog = document.querySelector('#share-help-dialog');
+document.querySelector('#share-help-button').addEventListener('click', () => {
+  openDialog(shareHelpDialog);
+});
+shareHelpDialog.addEventListener('close', () => {
+  aboutMenu.open = true;
+  document.querySelector('#share-help-button').focus();
+});
+
 setupUpdates(input);
+window.addEventListener('hashchange', openSharedText);
+openSharedText();
