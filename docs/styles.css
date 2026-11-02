@@ -123,3 +123,6 @@ textarea{flex:1;width:100%;height:auto;min-height:0;margin:0;padding:18px;resize
 #share-password-help{font-size:12px;color:var(--muted);margin:6px 0 0}
 #unlock-dialog .share-actions{margin-top:18px}
 @media(max-width:400px){.share-password-row{flex-wrap:wrap}#share-password{flex-basis:100%}#generate-password-button{margin-right:auto}}
+
+/* Keep click feedback visible after release and while clipboard access is pending. */
+.button.copy-feedback,.button.copy-feedback:hover:not(:disabled){background:#14271b;color:#f4f5ef;opacity:1;transition:none}

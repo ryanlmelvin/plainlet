@@ -53,6 +53,16 @@ let unlockRequest = null;
 let unlockAttempt = null;
 
 const historyStorageError = 'History could not be saved on this device. Changes will last only while this page is open.';
+const copyFeedbackTimers = new WeakMap();
+
+function flashCopyFeedback(button) {
+  clearTimeout(copyFeedbackTimers.get(button));
+  button.classList.add('copy-feedback');
+  copyFeedbackTimers.set(button, setTimeout(() => {
+    button.classList.remove('copy-feedback');
+    copyFeedbackTimers.delete(button);
+  }, 650));
+}
 
 function announce(message) {
   status.textContent = message;
@@ -199,6 +209,7 @@ function copyWithSelection(text, target = input) {
 copyButton.addEventListener('click', async () => {
   const text = buffer.getText();
   if (text.length === 0 || copyPending) return;
+  flashCopyFeedback(copyButton);
 
   const startedAt = interaction;
   copyPending = true;
@@ -356,6 +367,7 @@ generatePasswordButton.addEventListener('click', () => {
 async function copyShareField(field, button, label) {
   const text = field.value;
   if (!text || !shareLink.value || shareCopyInFlight) return;
+  flashCopyFeedback(button);
   const request = Symbol('share-copy');
   shareCopyRequest = request;
   shareCopyInFlight = true;
@@ -603,6 +615,7 @@ function renderHistory() {
 }
 
 async function copyHistoryEntry(text, preview, button) {
+  flashCopyFeedback(button);
   const request = Symbol('history-copy');
   historyCopyRequest = request;
   const isCurrent = () => historyCopyRequest === request && historyDialog.open && preview.isConnected;
