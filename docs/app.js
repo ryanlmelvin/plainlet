@@ -531,6 +531,19 @@ function historyIconButton(action, path) {
   return button;
 }
 
+function loadHistoryEntry(text) {
+  // Loading a saved paste is a new edit: delayed reads/copies must not replace it.
+  cancelPendingPaste();
+  historyCopyRequest = null;
+  historyDialog.close();
+  buffer.setText(text);
+  updateButtons();
+  input.focus();
+  input.setSelectionRange(0, 0);
+  input.scrollTop = 0;
+  announce('Paste loaded from history.');
+}
+
 function renderHistory() {
   if (!historyDialog.open) return;
   const entries = pasteHistory.getEntries();
@@ -545,7 +558,15 @@ function renderHistory() {
     const text = document.createElement('pre');
     text.className = 'history-text';
     text.tabIndex = 0;
+    text.setAttribute('role', 'button');
+    text.setAttribute('aria-label', `Load paste: ${entry.text.slice(0, 120)}`);
+    text.title = 'Load into editor';
     text.textContent = entry.text;
+    text.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      loadHistoryEntry(entry.text);
+    });
     const actions = document.createElement('div');
     actions.className = 'history-actions';
     const copy = historyIconButton('Copy', 'M8 8h12v12H8zM15 8V4H4v11h4');
@@ -558,6 +579,11 @@ function renderHistory() {
     });
     actions.append(copy, remove);
     row.append(text, actions);
+    row.addEventListener('click', (event) => {
+      // Include row padding and gaps, but keep both icon actions independent.
+      if (event.target.closest('button')) return;
+      loadHistoryEntry(entry.text);
+    });
     fragment.append(row);
   }
   historyList.replaceChildren(fragment);

@@ -85,9 +85,10 @@ textarea{flex:1;width:100%;height:auto;min-height:0;margin:0;padding:18px;resize
 .history-note{flex:none;margin:0;padding:10px 16px;font-size:12px;line-height:1.5;color:var(--muted);border-bottom:1px solid var(--border)}
 #history-empty{padding:24px 16px;margin:0;font-size:14px;color:var(--muted)}
 #history-list{list-style:none;margin:0;padding:0;overflow-y:auto;min-height:0;overscroll-behavior:contain}
-.history-entry{display:flex;gap:8px;padding:12px;border-bottom:1px solid var(--border)}
+.history-entry{display:flex;gap:8px;padding:12px;border-bottom:1px solid var(--border);cursor:pointer}
+.history-entry:hover{background:color-mix(in srgb,var(--border) 35%,transparent)}
 .history-entry:last-child{border-bottom:0}
-.history-text{flex:1;min-width:0;max-height:168px;overflow:auto;margin:0;padding:6px 4px;font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;user-select:text}
+.history-text{flex:1;min-width:0;min-height:44px;max-height:168px;overflow:auto;margin:0;padding:6px 4px;font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;user-select:text}
 .history-text:focus-visible{outline:2px solid var(--focus);outline-offset:-2px;border-radius:4px}
 .history-actions{display:flex;align-items:flex-start;flex:none}
 #history-status:not(:empty){padding:10px 16px;margin:0;border-top:1px solid var(--border)}

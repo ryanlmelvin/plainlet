@@ -9,7 +9,7 @@ Plainlet is a small, installable web app:
 - **Paste** reads plain text from your device clipboard and replaces the current buffer. If there is no text, the existing buffer stays intact.
 - **Clear text** empties the buffer.
 - **Copy** writes the buffer to the clipboard as plain text.
-- **History**, beside Copy on the right, shows past pastes with a copy icon and a trash icon for each entry. **Clear history** removes all entries without changing the current buffer.
+- **History**, beside Copy on the right, shows past pastes. Click an entry to load it into the editor for editing or sharing; keyboard users can focus its text and press Enter or Space. The copy and trash icons act independently without replacing the editor text. **Clear history** removes all entries without changing the current buffer.
 - **Share**, at the top right, creates a link containing a snapshot of the current text. Choose **Copy link** to share it. **Share?** in the Plainlet menu explains how it works.
 
 You can also type, edit, or paste directly into the text area. Rich-text styling is discarded; words, spacing, line breaks, emoji, and literal markup remain. This is a formatting remover, not an HTML-to-text converter or Markdown parser.
