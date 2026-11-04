@@ -21,7 +21,6 @@
         <details class="about-menu">
           <summary class="brand" aria-label="Plainlet menu"><img src="./icons/icon.svg" width="36" height="36" alt=""><span>Plainlet</span></summary>
           <div class="about-panel">
-            <button type="button" id="install-button" class="button button-clear">Install on device</button>
             <button type="button" id="privacy-button" class="button button-clear">Privacy</button>
             <button type="button" id="share-help-button" class="button button-clear">Share?</button>
             <h2>About Plainlet</h2>
@@ -33,6 +32,7 @@
           <span id="update-status" role="status" aria-live="polite" aria-atomic="true"></span>
           <button type="button" id="update-button" class="button button-paste">Update now</button>
         </div>
+        <button type="button" id="install-button" class="button button-clear" aria-haspopup="dialog" aria-controls="install-dialog">Install</button>
         <button type="button" id="share-button" class="button button-clear" aria-haspopup="dialog" aria-controls="share-dialog" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M5 13v7h14v-7"/></svg>Share</button>
       </header>
       <main>

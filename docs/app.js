@@ -686,11 +686,36 @@ document.addEventListener('keydown', (event) => {
 });
 
 const installDialog = document.querySelector('#install-dialog');
-document.querySelector('#install-button').addEventListener('click', () => {
+const installButton = document.querySelector('#install-button');
+const standalone = window.matchMedia('(display-mode: standalone)');
+let installPrompt;
+function updateInstallButton() {
+  installButton.hidden = standalone.matches || navigator.standalone === true;
+}
+updateInstallButton();
+standalone.addEventListener('change', updateInstallButton);
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  installPrompt = event;
+});
+window.addEventListener('appinstalled', () => {
+  installPrompt = null;
+  installButton.hidden = true;
+  installDialog.close();
+});
+installButton.addEventListener('click', async () => {
+  if (installPrompt) {
+    const prompt = installPrompt;
+    installPrompt = null;
+    try {
+      await prompt.prompt();
+      await prompt.userChoice;
+      return;
+    } catch { /* Fall back to installation instructions. */ }
+  }
   openDialog(installDialog);
 });
 installDialog.addEventListener('close', () => {
-  aboutMenu.open = true;
   document.querySelector('#install-button').focus();
 });
 
