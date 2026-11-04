@@ -38,7 +38,7 @@ async function mockClipboard(page, options = {}) {
 test('keeps history immediately beside copy on the right of the editor toolbar', async ({ page }) => {
   await mockClipboard(page);
   await page.goto('./');
-  await expect(page.locator('.toolbar').getByRole('button')).toHaveText(['Paste', 'Clear text', 'History', 'Copy']);
+  await expect(page.locator('.toolbar').getByRole('button')).toHaveText(['Paste', 'Clear text', 'Install', 'History', 'Copy']);
   await expect(page.getByRole('button', { name: 'Paste', exact: true })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Clear text' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Copy', exact: true })).toBeDisabled();
